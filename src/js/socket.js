@@ -36,19 +36,5 @@ function Socket() {
       chrome.sockets.tcp.send(_socket.socketId, data, callback)
     }
   }
-
-  this.toByteArray = function(str) {
-    var buffer = new ArrayBuffer(str.length)
-    var bufferView = new Uint8Array(buffer)
-    for (var i = 0; i < str.length; i++) {
-      bufferView[i] = str.charCodeAt(i)
-    }
-    return buffer
-  }
-
-  this.toString = function(buffer) {
-    return String.fromCharCode.apply(null, new Uint8Array(buffer))
-  }
 }
 
-//global.Socket = Socket

@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "da.js",
+  "description": "Dark Ages client",
+  "version": "1.0",
+  "icons": {
+  },
+  "app": {
+    "background": {"scripts": ["background.js"]}
+  },
+  "sockets": {
+    "tcp": {
+      "connect": [
+        "64.124.47.50:2610",
+        "64.124.47.50:2615",
+        "64.124.47.50:2617"
+      ]
+    }
+  }
+}

@@ -26,13 +26,13 @@ function ClientPacket(opcode) {
     ]
 
     if (noEncrypt.indexOf(_packet.opcode) >= 0) {
-        return EncryptMethod.NoEncrypt
+      return EncryptMethod.NoEncrypt
     }
     else if (normalEncrypt.indexOf(_packet.opcode) >= 0) {
-        return EncryptMethod.Normal
+      return EncryptMethod.Normal
     }
     else {
-        return EncryptMethod.MD5Key
+      return EncryptMethod.MD5Key
     }
   }
 
@@ -49,7 +49,7 @@ function ClientPacket(opcode) {
     buffer.push(uint8(bufferLength - 3))
     buffer.push(_packet.opcode)
     if (_packet.shouldEncrypt()) {
-        buffer.push(_packet.ordinal)
+      buffer.push(_packet.ordinal)
     }
     buffer = buffer.concat(_packet.data)
 

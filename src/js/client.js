@@ -32,8 +32,8 @@ function Client(username, password) {
 
   this.connect = function(address, port, callback) {
     if (address == undefined) {
-        address = LoginServer.address
-        port = LoginServer.port
+      address = LoginServer.address
+      port = LoginServer.port
     }
 
     var server = new ServerInfo().fromIPAddress(address, port)
@@ -189,34 +189,34 @@ function Client(username, password) {
   }
 
   this.packetHandler_0x03_redirect = function(packet) {
-      var address = packet.read(4)
-      var port = packet.readUint16()
-      packet.readByte()  // remaining
-      var seed = packet.readByte()
-      var key = packet.readString8()
-      var name = packet.readString8()
-      var id = packet.readUint32()
+    var address = packet.read(4)
+    var port = packet.readUint16()
+    packet.readByte()  // remaining
+    var seed = packet.readByte()
+    var key = packet.readString8()
+    var name = packet.readString8()
+    var id = packet.readUint32()
 
-      _client.crypto = new Crypto(seed, key, name)
+    _client.crypto = new Crypto(seed, key, name)
 
-      address.reverse()
-      address = address.join('.')
+    address.reverse()
+    address = address.join('.')
 
-      _client.disconnect(function() {
-        _client.connect(address, port, function() {
-          var x10 = new ClientPacket(0x10)
-          x10.writeByte(seed)
-          x10.writeString8(key)
-          x10.writeString8(name)
-          x10.writeUint32(id)
-          x10.writeByte(0x00)
-          _client.send(x10)
+    _client.disconnect(function() {
+      _client.connect(address, port, function() {
+        var x10 = new ClientPacket(0x10)
+        x10.writeByte(seed)
+        x10.writeString8(key)
+        x10.writeString8(name)
+        x10.writeUint32(id)
+        x10.writeByte(0x00)
+        _client.send(x10)
 
-          if (_client.server == LoginServer) {
-            _client.connectedToLogin()
-          }
-        })
+        if (_client.server == LoginServer) {
+          _client.connectedToLogin()
+        }
       })
+    })
   }
 
   this.packetHandler_0x05_userId = function(packet) {

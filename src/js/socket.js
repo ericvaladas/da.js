@@ -1,40 +1,47 @@
 function Socket() {
-  var _socket = this
+  this.listeners = []
 
   chrome.sockets.tcp.onReceiveError.addListener(function(error) {
-    console.log(error)
-    _socket.disconnect()
-  })
+    console.log(error);
+  });
+}
 
-  this.connect = function(ipAddress, port, callback) {
-    if (callback == undefined) { callback = function() {} }
-
+Object.assign(Socket.prototype, {
+  connect: function(ipAddress, port, callback) {
+    callback = callback ? callback : function() {};
     chrome.sockets.tcp.create(function(socket) {
-      _socket.socketId = socket.socketId
-      chrome.sockets.tcp.connect(_socket.socketId, ipAddress, port, callback)
-    })
-  }
+      this.socketId = socket.socketId;
+      chrome.sockets.tcp.connect(this.socketId, ipAddress, port, callback);
+    }.bind(this));
+  },
 
-  this.disconnect = function(callback) {
-    if (callback == undefined) { callback = function() {} }
-    chrome.sockets.tcp.disconnect(_socket.socketId, function() {
-      chrome.sockets.tcp.close(_socket.socketId, callback)
-    })
-  }
+  disconnect: function(callback) {
+    callback = callback ? callback : function() {};
+    this.removeListeners();
+    chrome.sockets.tcp.disconnect(this.socketId, function() {
+      chrome.sockets.tcp.close(this.socketId, callback);
+    }.bind(this));
+  },
 
-  this.receive = function(callback) {
-    chrome.sockets.tcp.onReceive.addListener(function(info) {
-      if (info.socketId == _socket.socketId) {
-        callback(info.data)
-      }
-    })
-  }
+  removeListeners: function() {
+    this.listeners.forEach(function(listener) {
+      chrome.sockets.tcp.onReceive.removeListener(listener);
+    });
+  },
 
-  this.send = function(data, callback) {
-    if (_socket.socketId != undefined) {
-      if (callback == undefined) { callback = function() {} }
-      chrome.sockets.tcp.send(_socket.socketId, data, callback)
+  receive: function(callback) {
+    var listener = function(info) {
+      callback(new Uint8Array(info.data));
+    };
+    this.listeners.push(listener)
+    chrome.sockets.tcp.onReceive.addListener(listener);
+  },
+
+  send: function(data, callback) {
+    if (this.socketId) {
+      callback = callback ? callback : function() {};
+      chrome.sockets.tcp.send(this.socketId, data, callback);
     }
   }
-}
+});
 

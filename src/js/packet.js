@@ -3,68 +3,23 @@ function randomRange(max) {
 }
 
 function getBytes(value) {
-  var bytes = []
+  var bytes = [];
   for (var i = 0; i < value.length; i++) {
     bytes.push(value.charCodeAt(i));
   }
 
-  return bytes
+  return bytes;
 }
 
 function ClientPacket(opcode) {
-  var _packet = this
-  this.opcode = opcode
-  this.ordinal = 0
-  this.position = 0
-  this.data = []
+  this.opcode = opcode;
+  this.ordinal = 0;
+  this.position = 0;
+  this.data = [];
+}
 
-  this.encryptMethod = function() {
-    var noEncrypt = [0x00, 0x10, 0x48]
-    var normalEncrypt = [
-      0x02, 0x03, 0x04, 0x0B, 0x26, 0x2D, 0x3A, 0x42,
-      0x43, 0x4B, 0x57, 0x62, 0x68, 0x71, 0x73, 0x7B
-    ]
-
-    if (noEncrypt.indexOf(_packet.opcode) >= 0) {
-      return EncryptMethod.NoEncrypt
-    }
-    else if (normalEncrypt.indexOf(_packet.opcode) >= 0) {
-      return EncryptMethod.Normal
-    }
-    else {
-      return EncryptMethod.MD5Key
-    }
-  }
-
-  this.shouldEncrypt = function() {
-    return (_packet.encryptMethod() != EncryptMethod.NoEncrypt)
-  }
-
-  this.toArray = function() {
-    var extraLength = _packet.shouldEncrypt() ? 5 : 4
-    var bufferLength = _packet.data.length + extraLength
-    var buffer = []
-    buffer.push(0xAA)
-    buffer.push(uint8((bufferLength - 3) / 256))
-    buffer.push(uint8(bufferLength - 3))
-    buffer.push(_packet.opcode)
-    if (_packet.shouldEncrypt()) {
-      buffer.push(_packet.ordinal)
-    }
-    buffer = buffer.concat(_packet.data)
-
-    return buffer
-  }
-
-  this.toBytearray = function() {
-    return new Uint8Array(_packet.toArray())
-  }
-
-  this.toString = function() {
-    return String.fromCharCode.apply(null, _packet.toArray())
-  }
-
-  this.dialog_crc_table = [
+Object.assign(ClientPacket.prototype, {
+  dialogCRCTable: [
     0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50A5, 0x60C6, 0x70E7,
     0x8108, 0x9129, 0xA14A, 0xB16B, 0xC18C, 0xD1AD, 0xE1CE, 0xF1EF,
     0x1231, 0x0210, 0x3273, 0x2252, 0x52B5, 0x4294, 0x72F7, 0x62D6,
@@ -97,360 +52,418 @@ function ClientPacket(opcode) {
     0x7C26, 0x6C07, 0x5C64, 0x4C45, 0x3CA2, 0x2C83, 0x1CE0, 0x0CC1,
     0xEF1F, 0xFF3E, 0xCF5D, 0xDF7C, 0xAF9B, 0xBFBA, 0x8FD9, 0x9FF8,
     0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1, 0x1EF0
-  ]
+  ],
 
-  this.write = function(buffer) {
-    _packet.data = _packet.data.concat(buffer)
-  }
+  toArray: function() {
+    var extraLength = this.shouldEncrypt() ? 5 : 4;
+    var bufferLength = this.data.length + extraLength;
+    var buffer = [];
 
-  this.writeByte = function(value) {
-    _packet.data.push(uint8(value))
-  }
+    buffer.push(0xAA);
+    buffer.push(uint8((bufferLength - 3) / 256));
+    buffer.push(uint8(bufferLength - 3));
+    buffer.push(this.opcode);
 
-  this.write_sbyte = function(value) {
-    _packet.data.push(int8(value))
-  }
-
-  this.writeBoolean = function(value) {
-    _packet.data.push(value ? 0x01 : 0x00)
-  }
-
-  this.writeInt16 = function(value) {
-    var value = int16(value)
-    _packet.data.push((value >> 8) & 0xFF)
-    _packet.data.push(value & 0xFF)
-  }
-
-  this.writeUint16 = function(value) {
-    var value = uint16(value)
-    _packet.data.push((value >> 8) & 0xFF)
-    _packet.data.push(value & 0xFF)
-  }
-
-  this.writeInt32 = function(value) {
-    var value = int32(value)
-    _packet.data.push((value >> 24) & 0xFF)
-    _packet.data.push((value >> 16) & 0xFF)
-    _packet.data.push((value >> 8) & 0xFF)
-    _packet.data.push(value & 0xFF)
-  }
-
-  this.writeUint32 = function(value) {
-    var value = uint32(value)
-    _packet.data.push((value >> 24) & 0xFF)
-    _packet.data.push((value >> 16) & 0xFF)
-    _packet.data.push((value >> 8) & 0xFF)
-    _packet.data.push(value & 0xFF)
-  }
-
-  this.writeString = function(value) {
-    var buffer = getBytes(value)
-    _packet.data = _packet.data.concat(buffer)
-    _packet.position += buffer.length
-  }
-
-  this.writeString8 = function(value) {
-    var buffer = getBytes(value)
-    _packet.data.push(buffer.length)
-    _packet.data = _packet.data.concat(buffer)
-    _packet.position += buffer.length + 1
-  }
-
-  this.writeString16 = function(value) {
-    var buffer = getBytes(value)
-    _packet.data.push((value >> 8) & 0xFF)
-    _packet.data.push(value & 0xFF)
-    _packet.data = _packet.data.concat(buffer)
-    _packet.position += buffer.length + 2
-  }
-
-  this.encrypt = function(crypto) {
-    if (_packet.opcode == 0x39 || _packet.opcode == 0x3A) {
-      _packet.encrypt_dialog()
+    if (this.shouldEncrypt()) {
+      buffer.push(this.ordinal);
     }
 
-    var key = ''
-    _packet.position = _packet.data.length
+    return buffer.concat(this.data);
+  },
 
-    var rand16 = randomRange(65277) + 256
-    var rand8 = randomRange(155) + 100
+  buffer: function() {
+    return new Uint8Array(this.toArray()).buffer;
+  },
 
-    if (_packet.encryptMethod() == EncryptMethod.Normal) {
-      _packet.writeByte(0)
-      key = crypto.key
+  toString: function() {
+    var output = "";
+    var dataArray = this.toArray();
+    for (var i in dataArray) {
+      var hex = dataArray[i].toString(16);
+      output += "{0}{1} ".format(hex.length > 1 ? "" : "0", hex);
     }
-    else if (_packet.encryptMethod() == EncryptMethod.MD5Key) {
-      _packet.writeByte(0)
-      _packet.writeByte(_packet.opcode)
-      key = crypto.generateKey(rand16, rand8)
+
+    return output.trim().toUpperCase();
+  },
+
+  write: function(buffer) {
+    this.data = this.data.concat(buffer);
+  },
+
+  writeByte: function(value) {
+    this.data.push(uint8(value));
+  },
+
+  writeSbyte: function(value) {
+    this.data.push(int8(value));
+  },
+
+  writeBoolean: function(value) {
+    this.data.push(value ? 0x01 : 0x00);
+  },
+
+  writeInt16: function(value) {
+    var value = int16(value);
+    this.data.push((value >> 8) & 0xFF);
+    this.data.push(value & 0xFF);
+  },
+
+  writeUint16: function(value) {
+    var value = uint16(value);
+    this.data.push((value >> 8) & 0xFF);
+    this.data.push(value & 0xFF);
+  },
+
+  writeInt32: function(value) {
+    var value = int32(value);
+    this.data.push((value >> 24) & 0xFF);
+    this.data.push((value >> 16) & 0xFF);
+    this.data.push((value >> 8) & 0xFF);
+    this.data.push(value & 0xFF);
+  },
+
+  writeUint32: function(value) {
+    var value = uint32(value);
+    this.data.push((value >> 24) & 0xFF);
+    this.data.push((value >> 16) & 0xFF);
+    this.data.push((value >> 8) & 0xFF);
+    this.data.push(value & 0xFF);
+  },
+
+  writeString: function(value) {
+    var buffer = getBytes(value);
+    this.data = this.data.concat(buffer);
+    this.position += buffer.length;
+  },
+
+  writeString8: function(value) {
+    var buffer = getBytes(value);
+    this.data.push(buffer.length);
+    this.data = this.data.concat(buffer);
+    this.position += buffer.length + 1;
+  },
+
+  writeString16: function(value) {
+    var buffer = getBytes(value);
+    this.data.push((value >> 8) & 0xFF);
+    this.data.push(value & 0xFF);
+    this.data = this.data.concat(buffer);
+    this.position += buffer.length + 2;
+  },
+
+  encryptMethod: function() {
+    var noEncrypt = [0x00, 0x10, 0x48];
+    var normalEncrypt = [
+      0x02, 0x03, 0x04, 0x0B, 0x26, 0x2D, 0x3A, 0x42,
+      0x43, 0x4B, 0x57, 0x62, 0x68, 0x71, 0x73, 0x7B
+    ];
+
+    if (noEncrypt.indexOf(this.opcode) >= 0) {
+      return EncryptMethod.None;
+    }
+    if (normalEncrypt.indexOf(this.opcode) >= 0) {
+      return EncryptMethod.Normal;
+    }
+
+    return EncryptMethod.MD5Key;
+  },
+
+  shouldEncrypt: function() {
+    return this.encryptMethod() != EncryptMethod.None;
+  },
+
+  encrypt: function(crypto) {
+    if (this.opcode == 0x39 || this.opcode == 0x3A) {
+      this.encryptDialog();
+    }
+
+    this.position = this.data.length;
+    var key = "";
+    var rand16 = randomRange(65277) + 256;
+    var rand8 = randomRange(155) + 100;
+    var saltIndex = 0;
+
+    if (this.encryptMethod() == EncryptMethod.Normal) {
+      this.writeByte(0);
+      key = crypto.key;
+    }
+    else if (this.encryptMethod() == EncryptMethod.MD5Key) {
+      this.writeByte(0);
+      this.writeByte(this.opcode);
+      key = crypto.generateKey(rand16, rand8);
     }
     else {
-      return
+      return;
     }
 
-    var saltIndex = 0
+    for (var i = 0; i < this.data.length; i++) {
+      saltIndex = uint8(i / crypto.key.length) % 256;
+      this.data[i] ^= uint8(crypto.salt()[saltIndex] ^ key[i % key.length].charCodeAt());
 
-    for (var i = 0; i < _packet.data.length; i++) {
-      saltIndex = uint8(i / crypto.key.length) % 256
-
-      _packet.data[i] ^= uint8(crypto.salt()[saltIndex] ^ key[i % key.length].charCodeAt())
-
-      if (saltIndex != _packet.ordinal) {
-        _packet.data[i] ^= crypto.salt()[_packet.ordinal]
+      if (saltIndex != this.ordinal) {
+        this.data[i] ^= crypto.salt()[this.ordinal];
       }
     }
 
-    _packet.writeByte(uint8(rand16 % 256 ^ 0x70))
-    _packet.writeByte(uint8(rand8 ^ 0x23))
-    _packet.writeByte(uint8((rand16 >> 8) % 256 ^ 0x74))
-  }
+    this.writeByte(uint8(rand16 % 256 ^ 0x70));
+    this.writeByte(uint8(rand8 ^ 0x23));
+    this.writeByte(uint8((rand16 >> 8) % 256 ^ 0x74));
+  },
 
-  this.generate_dialog_helper = function() {
-    var crc = 0
+  generateDialogHelper: function() {
+    var crc = 0;
 
-    for (var i = 0; _packet.data.length - 6; i++) {
-      crc = _packet.data[6 + i] ^ ((crc << 8) ^ _packet.dialog_crc_table[(crc >> 8)])
+    for (var i = 0; this.data.length - 6; i++) {
+      crc = this.data[6 + i] ^ ((crc << 8) ^ this.dialogCRCTable[crc >> 8]);
     }
 
-    _packet.data[0] = random.randint(0, 255)
-    _packet.data[1] = random.randint(0, 255)
-    _packet.data[2] = (_packet.data.length - 4) / 256
-    _packet.data[3] = (_packet.data.length - 4) % 256
-    _packet.data[4] = crc / 256
-    _packet.data[5] = crc % 256
-  }
+    this.data[0] = random.randint(0, 255);
+    this.data[1] = random.randint(0, 255);
+    this.data[2] = (this.data.length - 4) / 256;
+    this.data[3] = (this.data.length - 4) % 256;
+    this.data[4] = crc / 256;
+    this.data[5] = crc % 256;
+  },
 
-  this.encrypt_dialog = function() {
-    _packet.data = _packet.data.slice(0, 6).concat(_packet.data.slice(0, _packet.data.length - 6)).concat(_packet.data.slice(6))
+  encryptDialog: function() {
+    this.data = this.data.slice(0, 6)
+      .concat(this.data.slice(0, this.data.length - 6))
+      .concat(this.data.slice(6));
 
-    _packet.generate_dialog_helper()
+    this.generateDialogHelper();
 
-    var length = _packet.data[2] << 8 | _packet.data[3]
-    var x_prime = _packet.data[0] - 0x2D
-    var x = _packet.data[1] ^ x_prime
-    var y = x + 0x72
-    var z = x + 0x28
-    _packet.data[2] ^= y
-    _packet.data[3] ^= (y + 1) % 256
+    var length = this.data[2] << 8 | this.data[3];
+    var xPrime = this.data[0] - 0x2D;
+    var x = this.data[1] ^ xPrime;
+    var y = x + 0x72;
+    var z = x + 0x28;
+    this.data[2] ^= y;
+    this.data[3] ^= (y + 1) % 256;
+
     for (var i = 0; i < length; i++) {
-      _packet.data[4 + i] ^= (z + i) % 256
+      this.data[4 + i] ^= (z + i) % 256;
     }
   }
-}
+});
 
 
 function ServerPacket(buffer) {
-  var _packet = this
-  this.opcode = buffer[3]
-  this.position = 0
+  this.opcode = buffer[3];
+  this.position = 0;
 
-  this.encryptMethod = function() {
-    var noEncrypt = [0x00, 0x03, 0x40, 0x7E]
-    var normalEncrypt = [0x01, 0x02, 0x0A, 0x56, 0x60, 0x62, 0x66, 0x6F]
-
-    if (noEncrypt.indexOf(_packet.opcode) >= 0) {
-      return EncryptMethod.NoEncrypt
-    }
-    else if (normalEncrypt.indexOf(_packet.opcode) >= 0) {
-      return EncryptMethod.Normal
-    }
-    else {
-      return EncryptMethod.MD5Key
-    }
-  }
-
-  this.shouldEncrypt = function() {
-    return (_packet.encryptMethod() != EncryptMethod.NoEncrypt)
-  }
-
-  if (_packet.shouldEncrypt()) {
-    _packet.ordinal = buffer[4]
-    _packet.data = buffer.slice(5)
+  if (this.shouldEncrypt()) {
+    this.ordinal = buffer[4];
+    this.data = buffer.slice(5);
   }
   else {
-    _packet.data = buffer.slice(4)
-  }
-
-  this.toArray = function() {
-    var extraLength = _packet.shouldEncrypt() ? 5 : 4
-    var bufferLength = _packet.data.length + extraLength
-    var buffer = []
-    buffer.push(0xAA)
-    buffer.push(uint8((bufferLength - 3) / 256))
-    buffer.push(uint8(bufferLength - 3))
-    buffer.push(_packet.opcode)
-    if (_packet.shouldEncrypt()) {
-        buffer.push(_packet.ordinal)
-    }
-    buffer = buffer.concat(_packet.data)
-
-    return buffer
-  }
-
-  this.toBytearray = function() {
-    return new Uint8Array(_packet.toArray())
-  }
-
-  this.toString = function() {
-    return String.fromCharCode.apply(null, _packet.toArray())
-  }
-
-  this.read = function(length) {
-    if (_packet.position + length > _packet.data.length) {
-      return 0
-    }
-
-    var buffer = _packet.data.slice(_packet.position, length)
-    _packet.position += length
-
-    return buffer
-  }
-
-  this.readByte = function() {
-    if (_packet.position + 1 > _packet.data.length) {
-      return 0
-    }
-
-    var value = _packet.data[_packet.position]
-    _packet.position += 1
-    return value
-  }
-
-  this.readSbyte = function() {
-    if (_packet.position + 1 > _packet.data.length) {
-      return 0
-    }
-
-    var value = _packet.data[_packet.position]
-    _packet.position += 1
-    return value
-  }
-
-  this.readBoolean = function() {
-    if (_packet.position + 1 > _packet.data.length) {
-      return False
-    }
-
-    var value = _packet.data[_packet.position] != 0
-    _packet.position += 1
-    return value
-  }
-
-  this.readInt16 = function() {
-    if (_packet.position + 2 > _packet.data.length) {
-      return 0
-    }
-
-    var value = _packet.data[_packet.position] << 8 | _packet.data[_packet.position + 1]
-    _packet.position += 2
-
-    return value
-  }
-
-  this.readUint16 = function() {
-    if (_packet.position + 2 > _packet.data.length) {
-      return 0
-    }
-
-    var value = _packet.data[_packet.position] << 8 | _packet.data[_packet.position + 1]
-    _packet.position += 2
-
-    return value
-  }
-
-  this.readInt32 = function() {
-    if (_packet.position + 4 > _packet.data.length) {
-      return 0
-    }
-
-    var value = _packet.data[_packet.position] << 24 | _packet.data[_packet.position + 1] << 16 | _packet.data[_packet.position + 2] << 8 | _packet.data[_packet.position + 3]
-    _packet.position += 4
-
-    return int32(value)
-  }
-
-  this.readUint32 = function() {
-    if (_packet.position + 4 > _packet.data.length) {
-      return 0
-    }
-
-    var value = _packet.data[_packet.position] << 24 | _packet.data[_packet.position + 1] << 16 | _packet.data[_packet.position + 2] << 8 | _packet.data[_packet.position + 3]
-    _packet.position += 4
-
-    return value
-  }
-
-  this.readString8 = function() {
-    if (_packet.position + 1 > _packet.data.length) {
-      return ""
-    }
-
-    var length = _packet.data[_packet.position]
-    var position = _packet.position + 1
-
-    if (position + length > _packet.data.length) {
-      return ""
-    }
-
-    var buffer = _packet.data.slice(position, position + length)
-    _packet.position += length + 1
-
-    return String.fromCharCode.apply(null, buffer)
-  }
-
-  this.readString16 = function() {
-    if (_packet.position + 2 > _packet.data.length) {
-      return ""
-    }
-
-    var length = _packet.data[_packet.position] << 8 | _packet.data[_packet.position + 1]
-    var position = _packet.position + 2
-
-    if (position + length > _packet.data.length) {
-      return ""
-    }
-
-    var buffer = _packet.data.slice(position, position + length)
-    _packet.position += length + 2
-
-    return String.fromCharCode.apply(null, buffer)
-  }
-
-  this.decrypt = function(crypto) {
-    var key = ''
-    var length = _packet.data.length - 3
-
-    var rand16 = uint16((_packet.data[length + 2] << 8 | _packet.data[length]) ^ 0x6474)
-    var rand8 = uint8(_packet.data[length + 1] ^ 0x24)
-
-    if (_packet.encryptMethod() == EncryptMethod.Normal) {
-      key = crypto.key
-    }
-    else if (_packet.encryptMethod() == EncryptMethod.MD5Key) {
-      key = crypto.generateKey(rand16, rand8)
-    }
-    else {
-      return
-    }
-
-    var saltIndex = 0
-
-    for (var i = 0; i < length; i++) {
-      saltIndex = uint8((i / crypto.key.length) % 256)
-
-      _packet.data[i] ^= uint8(crypto.salt()[saltIndex] ^ key[i % key.length].charCodeAt())
-
-      if (saltIndex != _packet.ordinal) {
-        _packet.data[i] ^= crypto.salt()[_packet.ordinal]
-      }
-    }
-
-    this.data = _packet.data.slice(0, length)
+    this.data = buffer.slice(4);
   }
 }
 
+Object.assign(ServerPacket.prototype, {
+  encryptMethod: function() {
+    var noEncrypt = [0x00, 0x03, 0x40, 0x7E];
+    var normalEncrypt = [0x01, 0x02, 0x0A, 0x56, 0x60, 0x62, 0x66, 0x6F];
+
+    if (noEncrypt.indexOf(this.opcode) >= 0) {
+      return EncryptMethod.None
+    }
+    if (normalEncrypt.indexOf(this.opcode) >= 0) {
+      return EncryptMethod.Normal
+    }
+
+    return EncryptMethod.MD5Key
+  },
+
+  shouldEncrypt: function() {
+    return this.encryptMethod() != EncryptMethod.None
+  },
+
+  toArray: function() {
+    var extraLength = this.shouldEncrypt() ? 5 : 4;
+    var bufferLength = this.data.length + extraLength;
+    var buffer = [];
+
+    buffer.push(0xAA);
+    buffer.push(uint8((bufferLength - 3) / 256));
+    buffer.push(uint8(bufferLength - 3));
+    buffer.push(this.opcode);
+
+    if (this.shouldEncrypt()) {
+      buffer.push(this.ordinal);
+    }
+
+    return buffer.concat(this.data);
+  },
+
+  toString: function() {
+    var output = "";
+    var dataArray = this.toArray();
+
+    for (var i in dataArray) {
+      var hex = dataArray[i].toString(16);
+      output += "{0}{1} ".format(hex.length > 1 ? "" : "0", hex);
+    }
+
+    return output.trim().toUpperCase();
+  },
+
+  read: function(length) {
+    if (this.position + length > this.data.length) {
+      return 0;
+    }
+
+    var buffer = this.data.slice(this.position, length);
+    this.position += length;
+
+    return buffer;
+  },
+
+  readByte: function() {
+    if (this.position + 1 > this.data.length) {
+      return 0;
+    }
+
+    var value = this.data[this.position];
+    this.position += 1;
+
+    return value;
+  },
+
+  readSbyte: function() {
+    if (this.position + 1 > this.data.length) {
+      return 0;
+    }
+
+    var value = this.data[this.position];
+    this.position += 1;
+
+    return value;
+  },
+
+  readBoolean: function() {
+    if (this.position + 1 > this.data.length) {
+      return false;
+    }
+
+    var value = this.data[this.position] != 0;
+    this.position += 1;
+
+    return value;
+  },
+
+  readInt16: function() {
+    if (this.position + 2 > this.data.length) {
+      return 0;
+    }
+
+    var value = this.data[this.position] << 8 | this.data[this.position + 1];
+    this.position += 2;
+
+    return value;
+  },
+
+  readUint16: function() {
+    if (this.position + 2 > this.data.length) {
+      return 0;
+    }
+
+    var value = this.data[this.position] << 8 | this.data[this.position + 1];
+    this.position += 2;
+
+    return value;
+  },
+
+  readInt32: function() {
+    if (this.position + 4 > this.data.length) {
+      return 0;
+    }
+
+    var value = this.data[this.position] << 24 | this.data[this.position + 1] << 16 | this.data[this.position + 2] << 8 | this.data[this.position + 3];
+    this.position += 4;
+
+    return int32(value);
+  },
+
+  readUint32: function() {
+    if (this.position + 4 > this.data.length) {
+      return 0;
+    }
+
+    var value = this.data[this.position] << 24 | this.data[this.position + 1] << 16 | this.data[this.position + 2] << 8 | this.data[this.position + 3];
+    this.position += 4;
+
+    return value;
+  },
+
+  readString8: function() {
+    if (this.position + 1 > this.data.length) {
+      return "";
+    }
+
+    var length = this.data[this.position]
+    var position = this.position + 1
+
+    if (position + length > this.data.length) {
+      return "";
+    }
+
+    var buffer = this.data.slice(position, position + length);
+    this.position += length + 1;
+
+    return String.fromCharCode.apply(null, buffer)
+  },
+
+  readString16: function() {
+    if (this.position + 2 > this.data.length) {
+      return "";
+    }
+
+    var length = this.data[this.position] << 8 | this.data[this.position + 1];
+    var position = this.position + 2;
+
+    if (position + length > this.data.length) {
+      return "";
+    }
+
+    var buffer = this.data.slice(position, position + length);
+    this.position += length + 2;
+
+    return String.fromCharCode.apply(null, buffer);
+  },
+
+  decrypt: function(crypto) {
+    var key = "";
+    var length = this.data.length - 3;
+    var rand16 = uint16((this.data[length + 2] << 8 | this.data[length]) ^ 0x6474);
+    var rand8 = uint8(this.data[length + 1] ^ 0x24);
+    var saltIndex = 0;
+
+    if (this.encryptMethod() == EncryptMethod.Normal) {
+      key = crypto.key;
+    }
+    else if (this.encryptMethod() == EncryptMethod.MD5Key) {
+      key = crypto.generateKey(rand16, rand8);
+    }
+    else {
+      return;
+    }
+
+    for (var i = 0; i < length; i++) {
+      saltIndex = uint8((i / crypto.key.length) % 256);
+      this.data[i] ^= uint8(crypto.salt()[saltIndex] ^ key[i % key.length].charCodeAt());
+
+      if (saltIndex != this.ordinal) {
+        this.data[i] ^= crypto.salt()[this.ordinal];
+      }
+    }
+
+    this.data = this.data.slice(0, length);
+  }
+});
+
 EncryptMethod = {
-  NoEncrypt: 0,
+  None: 0,
   Normal: 1,
   MD5Key: 2
 }

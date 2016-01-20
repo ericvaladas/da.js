@@ -24,9 +24,9 @@ Object.assign(Socket.prototype, {
   },
 
   removeListeners: function() {
-    for (var i in this.listeners) {
-      chrome.sockets.tcp.onReceive.removeListener(this.listeners.pop())
-    }
+    this.listeners.forEach(function(listener) {
+      chrome.sockets.tcp.onReceive.removeListener(listener);
+    });
   },
 
   receive: function(callback) {

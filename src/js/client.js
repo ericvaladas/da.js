@@ -19,8 +19,8 @@ function Client(username, password) {
   this.startTime = new Date().getTime();
   this.clientOrdinal = 0;
   this.sentVersion = false;
-  this.logOutgoing = true;
-  this.logIncoming = true;
+  this.logOutgoing = false;
+  this.logIncoming = false;
 
   this.packetHandlers = {
     0x00: this.packetHandler_0x00_encryption,
@@ -47,7 +47,6 @@ Object.assign(Client.prototype, {
       port = LoginServer.port;
     }
 
-    var _client = this;
     var server = new ServerInfo().fromIPAddress(address, port);
 
     console.log("Connecting to {0}...".format(server.name));
@@ -56,35 +55,31 @@ Object.assign(Client.prototype, {
     this.socket.connect(address, port, function(success) {
       if (success == 0) {
         console.log("Connected.");
-        _client.server = server;
-        _client.socket.receive(_client.receive);
+        this.server = server;
+        this.socket.receive(this.receive.bind(this));
 
         if (callback) {
           callback();
         }
       }
-    });
+    }.bind(this));
   },
 
   disconnect: function(callback) {
     if (this.server) {
-      console.log("Disconnected from {0}.".format(_client.server.name));
-      this.server = null;
+      console.log("Disconnected from {0}.".format(this.server.name));
     }
     if (this.socket) {
       this.socket.disconnect(callback);
-      this.socket = null;
     }
   },
 
   reconnect: function() {
-    var _client = this;
-
     this.disconnect(function() {
-      _client.clientOrdinal = 0;
-      _client.sentVersion = false;
-      _client.connect();
-    });
+      this.clientOrdinal = 0;
+      this.sentVersion = false;
+      this.connect();
+    }.bind(this));
   },
 
   send: function(packet) {
@@ -193,6 +188,7 @@ Object.assign(Client.prototype, {
       // code 3: Invalid name or password
       // code 14: Name does not exist
       // code 15: Incorrect password
+      console.log(message);
     }
     else {
       console.log("Log in failed");
@@ -213,22 +209,21 @@ Object.assign(Client.prototype, {
     address.reverse();
     address = address.join('.');
 
-    var _client = this;
     this.disconnect(function() {
-      _client.connect(address, port, function() {
+      this.connect(address, port, function() {
         var x10 = new ClientPacket(0x10);
         x10.writeByte(seed);
         x10.writeString8(key);
         x10.writeString8(name);
         x10.writeUint32(id);
         x10.writeByte(0x00);
-        _client.send(x10);
+        this.send(x10);
 
-        if (_client.server == LoginServer) {
-          _client.connectedToLogin();
+        if (this.server == LoginServer) {
+          this.connectedToLogin();
         }
-      });
-    });
+      }.bind(this));
+    }.bind(this));
   },
 
   packetHandler_0x05_userId: function(packet) {
@@ -288,7 +283,7 @@ Object.assign(Client.prototype, {
     this.send(x62);
 
     var x00 = new ClientPacket(0x00);
-    x00.writeInt16(_client.daVersion);
+    x00.writeInt16(this.daVersion);
     x00.writeByte(0x4C);
     x00.writeByte(0x4B);
     x00.writeByte(0x00);
@@ -327,7 +322,7 @@ Object.assign(Client.prototype, {
       }
 
       if (packet.opcode in this.packetHandlers) {
-          this.packetHandlers[packet.opcode](packet);
+          this.packetHandlers[packet.opcode].call(this, packet);
       }
     }
   },

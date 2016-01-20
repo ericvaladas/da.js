@@ -21,6 +21,19 @@ function Client(username, password) {
   this.sentVersion = false;
   this.logOutgoing = true;
   this.logIncoming = true;
+
+  this.packetHandlers = {
+    0x00: this.packetHandler_0x00_encryption,
+    0x02: this.packetHandler_0x02_loginMessage,
+    0x03: this.packetHandler_0x03_redirect,
+    0x05: this.packetHandler_0x05_userId,
+    0x0A: this.packetHandler_0x0A_systemMessage,
+    0x0D: this.packetHandler_0x0D_chat,
+    0x3B: this.packetHandler_0x3B_pingA,
+    0x4C: this.packetHandler_0x4C_endingSignal,
+    0x68: this.packetHandler_0x68_pingB,
+    0x7E: this.packetHandler_0x7E_welome
+  };
 }
 
 Object.assign(Client.prototype, {
@@ -319,16 +332,4 @@ Object.assign(Client.prototype, {
     }
   },
 
-  packetHandlers: {
-    0x00: this.packetHandler_0x00_encryption,
-    0x02: this.packetHandler_0x02_loginMessage,
-    0x03: this.packetHandler_0x03_redirect,
-    0x05: this.packetHandler_0x05_userId,
-    0x0A: this.packetHandler_0x0A_systemMessage,
-    0x0D: this.packetHandler_0x0D_chat,
-    0x3B: this.packetHandler_0x3B_pingA,
-    0x4C: this.packetHandler_0x4C_endingSignal,
-    0x68: this.packetHandler_0x68_pingB,
-    0x7E: this.packetHandler_0x7E_welome
-  }
 });

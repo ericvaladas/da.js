@@ -19,7 +19,7 @@ function ClientPacket(opcode) {
 }
 
 Object.assign(ClientPacket.prototype, {
-  dialog_crc_table: [
+  dialogCRCTable: [
     0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50A5, 0x60C6, 0x70E7,
     0x8108, 0x9129, 0xA14A, 0xB16B, 0xC18C, 0xD1AD, 0xE1CE, 0xF1EF,
     0x1231, 0x0210, 0x3273, 0x2252, 0x52B5, 0x4294, 0x72F7, 0x62D6,
@@ -94,7 +94,7 @@ Object.assign(ClientPacket.prototype, {
     this.data.push(uint8(value));
   },
 
-  write_sbyte: function(value) {
+  writeSbyte: function(value) {
     this.data.push(int8(value));
   },
 
@@ -174,7 +174,7 @@ Object.assign(ClientPacket.prototype, {
 
   encrypt: function(crypto) {
     if (this.opcode == 0x39 || this.opcode == 0x3A) {
-      this.encrypt_dialog();
+      this.encryptDialog();
     }
 
     this.position = this.data.length;
@@ -210,11 +210,11 @@ Object.assign(ClientPacket.prototype, {
     this.writeByte(uint8((rand16 >> 8) % 256 ^ 0x74));
   },
 
-  generate_dialog_helper: function() {
+  generateDialogHelper: function() {
     var crc = 0;
 
     for (var i = 0; this.data.length - 6; i++) {
-      crc = this.data[6 + i] ^ ((crc << 8) ^ this.dialog_crc_table[crc >> 8]);
+      crc = this.data[6 + i] ^ ((crc << 8) ^ this.dialogCRCTable[crc >> 8]);
     }
 
     this.data[0] = random.randint(0, 255);
@@ -225,16 +225,16 @@ Object.assign(ClientPacket.prototype, {
     this.data[5] = crc % 256;
   },
 
-  encrypt_dialog: function() {
+  encryptDialog: function() {
     this.data = this.data.slice(0, 6)
       .concat(this.data.slice(0, this.data.length - 6))
       .concat(this.data.slice(6));
 
-    this.generate_dialog_helper();
+    this.generateDialogHelper();
 
     var length = this.data[2] << 8 | this.data[3];
-    var x_prime = this.data[0] - 0x2D;
-    var x = this.data[1] ^ x_prime;
+    var xPrime = this.data[0] - 0x2D;
+    var x = this.data[1] ^ xPrime;
     var y = x + 0x72;
     var z = x + 0x28;
     this.data[2] ^= y;

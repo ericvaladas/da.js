@@ -325,6 +325,5 @@ Object.assign(Client.prototype, {
           this.packetHandlers[packet.opcode].call(this, packet);
       }
     }
-  },
-
+  }
 });

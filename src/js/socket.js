@@ -1,40 +1,41 @@
 function Socket() {
-  var _socket = this
-
   chrome.sockets.tcp.onReceiveError.addListener(function(error) {
-    console.log(error)
-    _socket.disconnect()
-  })
+    console.log(error);
+  });
+}
 
-  this.connect = function(ipAddress, port, callback) {
-    if (callback == undefined) { callback = function() {} }
-
+Object.assign(Socket.prototype, {
+  connect: function(ipAddress, port, callback) {
+    callback = callback ? callback : function() {};
+    var _socket = this;
     chrome.sockets.tcp.create(function(socket) {
-      _socket.socketId = socket.socketId
-      chrome.sockets.tcp.connect(_socket.socketId, ipAddress, port, callback)
-    })
-  }
+      _socket.socketId = socket.socketId;
+      chrome.sockets.tcp.connect(_socket.socketId, ipAddress, port, callback);
+    });
+  },
 
-  this.disconnect = function(callback) {
-    if (callback == undefined) { callback = function() {} }
+  disconnect: function(callback) {
+    callback = callback ? callback : function() {};
+    var _socket = this;
     chrome.sockets.tcp.disconnect(_socket.socketId, function() {
-      chrome.sockets.tcp.close(_socket.socketId, callback)
-    })
-  }
+      chrome.sockets.tcp.close(_socket.socketId, callback);
+    });
+  },
 
-  this.receive = function(callback) {
+  receive: function(callback) {
+    var _socket = this;
     chrome.sockets.tcp.onReceive.addListener(function(info) {
       if (info.socketId == _socket.socketId) {
-        callback(info.data)
+        callback(new Uint8Array(info.data));
       }
-    })
-  }
+    });
+  },
 
-  this.send = function(data, callback) {
-    if (_socket.socketId != undefined) {
-      if (callback == undefined) { callback = function() {} }
-      chrome.sockets.tcp.send(_socket.socketId, data, callback)
+  send: function(data, callback) {
+    if (this.socketId) {
+      callback = callback ? callback : function() {};
+      chrome.sockets.tcp.send(this.socketId, data, callback);
     }
   }
-}
+});
 

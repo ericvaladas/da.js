@@ -12,170 +12,168 @@ if (!String.prototype.format) {
 }
 
 function Client(username, password) {
-  var _client = this
-  this.daVersion = 739
-  this.username = username
-  this.password = password
-  this.crypto = new Crypto()
-  this.startTime = new Date().getTime()
-  this.recvBuffer = []
-  this.clientOrdinal = 0
-  this.socket = null
-  this.server = null
-  this.sentVersion = false
-  this.showOutgoing = false
-  this.showIncoming = false
+  this.daVersion = 739;
+  this.username = username;
+  this.password = password;
+  this.crypto = new Crypto();
+  this.startTime = new Date().getTime();
+  this.clientOrdinal = 0;
+  this.sentVersion = false;
+  this.logOutgoing = true;
+  this.logIncoming = true;
+}
 
-  this.tickCount = function() {
-    return new Date().getTime() - _client.startTime
-  }
+Object.assign(Client.prototype, {
+  tickCount: function() {
+    return new Date().getTime() - this.startTime;
+  },
 
-  this.connect = function(address, port, callback) {
-    if (address == undefined) {
-      address = LoginServer.address
-      port = LoginServer.port
+  connect: function(address, port, callback) {
+    if (!address) {
+      address = LoginServer.address;
+      port = LoginServer.port;
     }
 
-    var server = new ServerInfo().fromIPAddress(address, port)
+    var _client = this;
+    var server = new ServerInfo().fromIPAddress(address, port);
 
-    console.log("Connecting to {0}...".format(server.name))
+    console.log("Connecting to {0}...".format(server.name));
 
-    _client.socket = new Socket()
-    _client.socket.connect(address, port, function(success) {
+    this.socket = new Socket();
+    this.socket.connect(address, port, function(success) {
       if (success == 0) {
-        console.log("Connected.")
-        _client.socket.receive(_client.handleRecv)
+        console.log("Connected.");
+        _client.server = server;
+        _client.socket.receive(_client.receive);
 
-        if (callback != undefined) {
-          callback()
+        if (callback) {
+          callback();
         }
       }
-    })
+    });
+  },
 
-    this.server = server
-  }
-
-  this.disconnect = function(callback) {
-    if (_client.server) {
-      console.log("Disconnected from {0}.".format(_client.server.name))
-      _client.server = null
+  disconnect: function(callback) {
+    if (this.server) {
+      console.log("Disconnected from {0}.".format(_client.server.name));
+      this.server = null;
     }
-    if (_client.socket) {
-      _client.socket.disconnect(callback)
-      _client.socket = null
+    if (this.socket) {
+      this.socket.disconnect(callback);
+      this.socket = null;
     }
-  }
+  },
 
-  this.reconnect = function() {
-    _client.disconnect(function() {
-      _client.clientOrdinal = 0
-      _client.sentVersion = false
-      _client.connect()
-    })
-  }
+  reconnect: function() {
+    var _client = this;
 
-  this.send = function(packet) {
+    this.disconnect(function() {
+      _client.clientOrdinal = 0;
+      _client.sentVersion = false;
+      _client.connect();
+    });
+  },
+
+  send: function(packet) {
+    if (this.logOutgoing) {
+      console.log("Sent: {0}".format(packet.toString()));
+    }
+
     if (packet.shouldEncrypt()) {
-      packet.ordinal = _client.clientOrdinal
-      _client.clientOrdinal = uint8(_client.clientOrdinal + 1)
-      packet.encrypt(_client.crypto)
+      packet.ordinal = this.clientOrdinal;
+      this.clientOrdinal = uint8(this.clientOrdinal + 1);
+      packet.encrypt(this.crypto);
     }
 
-    _client.socket.send(packet.toBytearray().buffer, function() {
-      if (_client.showOutgoing) {
-        console.log("Sent: {0}".format(packet.toString()))
-      }
-    })
-  }
+    this.socket.send(packet.buffer());
+  },
 
-  this.connectedToLogin = function() {
-    _client.logIn()
-  }
+  connectedToLogin: function() {
+    this.logIn();
+  },
 
-  this.connectedToWorld = function() {
-    console.log("Logged into {0} as {1}.".format(_client.server.name, _client.username))
-    _client.send(new ClientPacket(0x2D))
-  }
+  connectedToWorld: function() {
+    console.log("Logged into {0} as {1}.".format(this.server.name, this.username));
+    this.send(new ClientPacket(0x2D));
+  },
 
-  this.logIn = function() {
-    console.log("Logging in as {0}... ".format(_client.username))
+  logIn: function() {
+    console.log("Logging in as {0}... ".format(this.username));
 
-    var key1 = randomRange(0xFF)
-    var key2 = randomRange(0xFF)
-    var clientId = randomRange(0xFFFFFFFF)
-    var clientIdKey = uint8(key2 + 138)
+    var key1 = randomRange(0xFF);
+    var key2 = randomRange(0xFF);
+    var clientId = randomRange(0xFFFFFFFF);
+    var clientIdKey = uint8(key2 + 138);
 
     var clientIdArray = [
       clientId & 0x0FF,
       (clientId >> 8) & 0x0FF,
       (clientId >> 16) & 0x0FF,
       (clientId >> 24) & 0x0FF
-    ]
+    ];
 
-    var nexonCRC = new NexonCRC16()
-    var hash = nexonCRC.calculate(clientIdArray, 0, 4)
-    var clientIdChecksum = uint16(hash)
-    var clientIdChecksumKey = uint8(key2 + 0x5E)
-    clientIdChecksum ^= uint16(clientIdChecksumKey | ((clientIdChecksumKey + 1) << 8))
+    var nexonCRC = new NexonCRC16();
+    var hash = nexonCRC.calculate(clientIdArray, 0, 4);
+    var clientIdChecksum = uint16(hash);
+    var clientIdChecksumKey = uint8(key2 + 0x5E);
 
-    clientId ^= uint32(clientIdKey | ((clientIdKey + 1) << 8) | ((clientIdKey + 2) << 16) | ((clientIdKey + 3) << 24))
+    clientIdChecksum ^= uint16(clientIdChecksumKey | ((clientIdChecksumKey + 1) << 8));
+    clientId ^= uint32(clientIdKey | ((clientIdKey + 1) << 8) | ((clientIdKey + 2) << 16) | ((clientIdKey + 3) << 24));
 
-    var randomValue = randomRange(0xFFFF)
-    var randomValueKey = uint8(key2 + 115)
-    randomValue ^= uint32(randomValueKey | ((randomValueKey + 1) << 8) | ((randomValueKey + 2) << 16) | ((randomValueKey + 3) << 24))
+    var randomValue = randomRange(0xFFFF);
+    var randomValueKey = uint8(key2 + 115);
+    randomValue ^= uint32(randomValueKey | ((randomValueKey + 1) << 8) | ((randomValueKey + 2) << 16) | ((randomValueKey + 3) << 24));
 
-    var x03 = new ClientPacket(0x03)
-    x03.writeString8(_client.username)
-    x03.writeString8(_client.password)
-    x03.writeByte(key1)
-    x03.writeByte(uint8(key2 ^ (key1 + 59)))
-    x03.writeUint32(clientId)
-    x03.writeUint16(clientIdChecksum)
-    x03.writeUint32(randomValue)
+    var x03 = new ClientPacket(0x03);
+    x03.writeString8(this.username);
+    x03.writeString8(this.password);
+    x03.writeByte(key1);
+    x03.writeByte(uint8(key2 ^ (key1 + 59)));
+    x03.writeUint32(clientId);
+    x03.writeUint16(clientIdChecksum);
+    x03.writeUint32(randomValue);
 
-    var crc = nexonCRC.calculate(x03.data, _client.username.length + _client.password.length + 2, 12)
-    var crcKey = uint8(key2 + 165)
-    crc ^= uint16(crcKey | (crcKey + 1) << 8)
+    var crc = nexonCRC.calculate(x03.data, this.username.length + this.password.length + 2, 12);
+    var crcKey = uint8(key2 + 165);
+    crc ^= uint16(crcKey | (crcKey + 1) << 8);
 
-    x03.writeUint16(crc)
-    x03.writeUint16(0x0100)
+    x03.writeUint16(crc);
+    x03.writeUint16(0x0100);
+    this.send(x03);
+  },
 
-    this.send(x03)
-  }
-
-  this.packetHandler_0x00_encryption = function(packet) {
-    var code = packet.readByte()
+  packetHandler_0x00_encryption: function(packet) {
+    var code = packet.readByte();
 
     if (code == 1) {
-      _client.daVersion -= 1
-      console.log("Invalid DA version, possibly too high. Trying again with {0}.".format(_client.daVersion))
-      _client.reconnect()
-      return
+      this.daVersion -= 1;
+      console.log("Invalid DA version, possibly too high. Trying again with {0}.".format(this.daVersion));
+      this.reconnect();
+      return;
     }
     else if (code == 2) {
-      var version = packet.readInt16()
-      packet.readByte()
-      packet.readString8()  // patch url
-      _client.daVersion = version
-      console.log("Your DA version is too low. Setting DA version to {0}.".format(version))
-      _client.reconnect()
-      return
+      var version = packet.readInt16();
+      packet.readByte();
+      packet.readString8();  // patch url
+      this.daVersion = version;
+      console.log("Your DA version is too low. Setting DA version to {0}.".format(version));
+      this.reconnect();
+      return;
     }
 
-    packet.readUint32()  // server table crc
-    var seed = packet.readByte()
-    var key = packet.readString8()
+    packet.readUint32();  // server table crc
+    var seed = packet.readByte();
+    var key = packet.readString8();
+    this.crypto = new Crypto(seed, key);
 
-    _client.crypto = new Crypto(seed, key)
+    var x57 = new ClientPacket(0x57);
+    x57.writeUint32(0);
+    this.send(x57);
+  },
 
-    var x57 = new ClientPacket(0x57)
-    x57.writeUint32(0)
-    _client.send(x57)
-  }
-
-  this.packetHandler_0x02_loginMessage = function(packet) {
-    var code = packet.readByte()
-    var message = packet.readString8()
+  packetHandler_0x02_loginMessage: function(packet) {
+    var code = packet.readByte();
+    var message = packet.readString8();
 
     if (code == 0 || code == 3 || code == 14 || code == 15) {
       // code 0: Success
@@ -184,143 +182,144 @@ function Client(username, password) {
       // code 15: Incorrect password
     }
     else {
-      console.log("Log in failed")
+      console.log("Log in failed");
     }
-  }
+  },
 
-  this.packetHandler_0x03_redirect = function(packet) {
-    var address = packet.read(4)
-    var port = packet.readUint16()
-    packet.readByte()  // remaining
-    var seed = packet.readByte()
-    var key = packet.readString8()
-    var name = packet.readString8()
-    var id = packet.readUint32()
+  packetHandler_0x03_redirect: function(packet) {
+    var address = packet.read(4);
+    var port = packet.readUint16();
+    packet.readByte();  // remaining
+    var seed = packet.readByte();
+    var key = packet.readString8();
+    var name = packet.readString8();
+    var id = packet.readUint32();
 
-    _client.crypto = new Crypto(seed, key, name)
+    this.crypto = new Crypto(seed, key, name);
 
-    address.reverse()
-    address = address.join('.')
+    address.reverse();
+    address = address.join('.');
 
-    _client.disconnect(function() {
+    var _client = this;
+    this.disconnect(function() {
       _client.connect(address, port, function() {
-        var x10 = new ClientPacket(0x10)
-        x10.writeByte(seed)
-        x10.writeString8(key)
-        x10.writeString8(name)
-        x10.writeUint32(id)
-        x10.writeByte(0x00)
-        _client.send(x10)
+        var x10 = new ClientPacket(0x10);
+        x10.writeByte(seed);
+        x10.writeString8(key);
+        x10.writeString8(name);
+        x10.writeUint32(id);
+        x10.writeByte(0x00);
+        _client.send(x10);
 
         if (_client.server == LoginServer) {
-          _client.connectedToLogin()
+          _client.connectedToLogin();
         }
-      })
-    })
-  }
+      });
+    });
+  },
 
-  this.packetHandler_0x05_userId = function(packet) {
-    _client.connectedToWorld()
-  }
+  packetHandler_0x05_userId: function(packet) {
+    this.connectedToWorld();
+  },
 
-  this.packetHandler_0x0A_systemMessage = function(packet) {
-    packet.readByte()
-    console.log(packet.readString16())
-  }
+  packetHandler_0x0A_systemMessage: function(packet) {
+    packet.readByte();
+    var message = packet.readString16();
 
-  this.packetHandler_0x0D_chat = function(packet) {
-  }
+    console.log(message);
+  },
 
-  this.packetHandler_0x3B_pingA = function(packet) {
-    var hiByte = packet.readByte()
-    var loByte = packet.readByte()
+  packetHandler_0x0D_chat: function(packet) {
 
-    var x45 = new ClientPacket(0x45)
-    x45.writeByte(loByte)
-    x45.writeByte(hiByte)
-    _client.send(x45)
-  }
+  },
 
-  this.packetHandler_0x4C_endingSignal = function(packet) {
-    var x0B = new ClientPacket(0x0B)
-    x0B.writeBoolean(False)
-    _client.send(x0B)
-  }
+  packetHandler_0x3B_pingA: function(packet) {
+    var hiByte = packet.readByte();
+    var loByte = packet.readByte();
 
-  this.packetHandler_0x68_pingB = function(packet) {
-    var timestamp = packet.readInt32()
+    var x45 = new ClientPacket(0x45);
+    x45.writeByte(loByte);
+    x45.writeByte(hiByte);
+    this.send(x45);
+  },
 
-    var x75 = new ClientPacket(0x75)
-    x75.writeInt32(timestamp)
-    x75.writeInt32(int32(this.tickCount()))
-    _client.send(x75)
-  }
+  packetHandler_0x4C_endingSignal: function(packet) {
+    var x0B = new ClientPacket(0x0B);
+    x0B.writeBoolean(False);
+    this.send(x0B);
+  },
 
-  this.packetHandler_0x7E_welome = function(packet) {
+  packetHandler_0x68_pingB: function(packet) {
+    var timestamp = packet.readInt32();
+
+    var x75 = new ClientPacket(0x75);
+    x75.writeInt32(timestamp);
+    x75.writeInt32(int32(this.tickCount()));
+    this.send(x75);
+  },
+
+  packetHandler_0x7E_welome: function(packet) {
     if (this.sentVersion) {
-      return
+      return;
     }
 
-    var x62 = new ClientPacket(0x62)
-    x62.writeByte(0x34)
-    x62.writeByte(0x00)
-    x62.writeByte(0x0A)
-    x62.writeByte(0x88)
-    x62.writeByte(0x6E)
-    x62.writeByte(0x59)
-    x62.writeByte(0x59)
-    x62.writeByte(0x75)
-    _client.send(x62)
+    var x62 = new ClientPacket(0x62);
+    x62.writeByte(0x34);
+    x62.writeByte(0x00);
+    x62.writeByte(0x0A);
+    x62.writeByte(0x88);
+    x62.writeByte(0x6E);
+    x62.writeByte(0x59);
+    x62.writeByte(0x59);
+    x62.writeByte(0x75);
+    this.send(x62);
 
-    var x00 = new ClientPacket(0x00)
-    x00.writeInt16(_client.daVersion)
-    x00.writeByte(0x4C)
-    x00.writeByte(0x4B)
-    x00.writeByte(0x00)
-    _client.send(x00)
+    var x00 = new ClientPacket(0x00);
+    x00.writeInt16(_client.daVersion);
+    x00.writeByte(0x4C);
+    x00.writeByte(0x4B);
+    x00.writeByte(0x00);
+    this.send(x00);
 
-    _client.sentVersion = true
-  }
+    this.sentVersion = true;
+  },
 
-  this.handleRecv = function(recvBuffer) {
-    recvBuffer = new Uint8Array(recvBuffer)
-
-    if (recvBuffer.length == 0) {
-      _client.disconnect()
-      return
+  receive: function(buffer) {
+    if (!buffer) {
+      this.disconnect();
+      return;
     }
 
-    while (recvBuffer.length > 3) {
-      if (recvBuffer[0] != 0xAA) {
-        return
+    while (buffer.length > 3) {
+      if (buffer[0] != 0xAA) {
+        return;
       }
 
-      var length = recvBuffer[1] << 8 | recvBuffer[2] + 3
+      var length = buffer[1] << 8 | buffer[2] + 3;
 
-      if (length > recvBuffer.length) {
-        break
+      if (length > buffer.length) {
+        break;
       }
 
-      var buffer = recvBuffer.slice(0, length)
-      recvBuffer = recvBuffer.slice(length)
-
-      var packet = new ServerPacket(buffer)
+      var packetBuffer = Array.from(buffer.slice(0, length));
+      var packet = new ServerPacket(packetBuffer);
+      buffer = buffer.slice(length);
 
       if (packet.shouldEncrypt()) {
-        packet.decrypt(_client.crypto)
+        packet.decrypt(this.crypto);
       }
 
-      if (_client.showIncoming) {
-        console.log("Received: {0}".format(packet.toString()))
+      if (this.logIncoming) {
+        console.log("Received: {0}".format(packet.toString()));
       }
 
-      if (packet.opcode in _client.packetHandlers) {
-          _client.packetHandlers[packet.opcode](packet)
+      if (packet.opcode in this.packetHandlers) {
+          this.packetHandlers[packet.opcode](packet);
       }
     }
-  }
+  },
 
-  this.packetHandlers = {
+  packetHandlers: {
     0x00: this.packetHandler_0x00_encryption,
     0x02: this.packetHandler_0x02_loginMessage,
     0x03: this.packetHandler_0x03_redirect,
@@ -332,4 +331,4 @@ function Client(username, password) {
     0x68: this.packetHandler_0x68_pingB,
     0x7E: this.packetHandler_0x7E_welome
   }
-}
+});

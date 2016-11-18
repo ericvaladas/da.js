@@ -12,7 +12,7 @@ if (!String.prototype.format) {
 }
 
 function Client(username, password) {
-  this.daVersion = 739;
+  this.daVersion = 741;
   this.username = username;
   this.password = password;
   this.crypto = new Crypto();
@@ -83,16 +83,18 @@ Object.assign(Client.prototype, {
   },
 
   send: function(packet) {
+    var shouldEncrypt = isEncryptedOpcode(packet.opcode, PacketType.Client);
+
+    if (shouldEncrypt) {
+      packet.sequence = this.clientOrdinal;
+      this.clientOrdinal = uint8(this.clientOrdinal + 1);
+    }
+
     if (this.logOutgoing) {
       console.log("Sent: {0}".format(packet.toString()));
     }
 
-    if (packet.shouldEncrypt()) {
-      packet.ordinal = this.clientOrdinal;
-      this.clientOrdinal = uint8(this.clientOrdinal + 1);
-      packet.encrypt(this.crypto);
-    }
-
+    packet.encrypt(this.crypto);
     this.socket.send(packet.buffer());
   },
 
@@ -141,7 +143,7 @@ Object.assign(Client.prototype, {
     x03.writeUint16(clientIdChecksum);
     x03.writeUint32(randomValue);
 
-    var crc = nexonCRC.calculate(x03.data, this.username.length + this.password.length + 2, 12);
+    var crc = nexonCRC.calculate(x03.body, this.username.length + this.password.length + 2, 12);
     var crcKey = uint8(key2 + 165);
     crc ^= uint16(crcKey | (crcKey + 1) << 8);
 
@@ -175,7 +177,10 @@ Object.assign(Client.prototype, {
     this.crypto = new Crypto(seed, key);
 
     var x57 = new ClientPacket(0x57);
-    x57.writeUint32(0);
+    //x57.writeUint32(0);
+    x57.writeByte(0);
+    x57.writeByte(0);
+    x57.writeByte(0);
     this.send(x57);
   },
 
@@ -210,6 +215,7 @@ Object.assign(Client.prototype, {
     address = address.join('.');
 
     this.disconnect(function() {
+      this.clientOrdinal = 0;
       this.connect(address, port, function() {
         var x10 = new ClientPacket(0x10);
         x10.writeByte(seed);
@@ -240,6 +246,14 @@ Object.assign(Client.prototype, {
   packetHandler_0x0D_chat: function(packet) {
 
   },
+
+  say: function(message) {
+    var x0E = new ClientPacket(0x0E);
+    x0E.writeBoolean(false);
+    x0E.writeString8(message);
+    this.send(x0E);
+  },
+
 
   packetHandler_0x3B_pingA: function(packet) {
     var hiByte = packet.readByte();
@@ -298,11 +312,7 @@ Object.assign(Client.prototype, {
       return;
     }
 
-    while (buffer.length > 3) {
-      if (buffer[0] != 0xAA) {
-        return;
-      }
-
+    while (buffer.length > 3 && buffer[0] === 0xAA) {
       var length = buffer[1] << 8 | buffer[2] + 3;
 
       if (length > buffer.length) {
@@ -311,19 +321,17 @@ Object.assign(Client.prototype, {
 
       var packetBuffer = Array.from(buffer.slice(0, length));
       var packet = new ServerPacket(packetBuffer);
-      buffer = buffer.slice(length);
-
-      if (packet.shouldEncrypt()) {
-        packet.decrypt(this.crypto);
-      }
+      packet.decrypt(this.crypto);
 
       if (this.logIncoming) {
         console.log("Received: {0}".format(packet.toString()));
       }
 
       if (packet.opcode in this.packetHandlers) {
-          this.packetHandlers[packet.opcode].call(this, packet);
+        this.packetHandlers[packet.opcode].call(this, packet);
       }
+
+      buffer = buffer.slice(length);
     }
   }
 });

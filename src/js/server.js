@@ -20,6 +20,6 @@ Object.assign(ServerInfo.prototype, {
 });
 
 
-var LoginServer = new ServerInfo('64.124.47.50', 2610, "Login Server");
-var TemuairServer = new ServerInfo('64.124.47.50', 2615, "Temuair Server");
-var MedeniaServer = new ServerInfo('64.124.47.50', 2617, "Medenia Server");
+var LoginServer = new ServerInfo('52.88.55.94', 2610, "Login Server");
+var TemuairServer = new ServerInfo('52.88.55.94', 2611, "Temuair Server");
+var MedeniaServer = new ServerInfo('52.88.55.94', 2612, "Medenia Server");

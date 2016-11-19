@@ -17,7 +17,7 @@ function Client(username, password) {
   this.password = password;
   this.crypto = new Crypto();
   this.startTime = new Date().getTime();
-  this.clientOrdinal = 0;
+  this.encryptSequence = 0;
   this.sentVersion = false;
   this.logOutgoing = false;
   this.logIncoming = false;
@@ -47,7 +47,7 @@ Object.assign(Client.prototype, {
       port = LoginServer.port;
     }
 
-    var server = new ServerInfo().fromIPAddress(address, port);
+    var server = new Server().fromIPAddress(address, port);
 
     console.log("Connecting to {0}...".format(server.name));
 
@@ -76,25 +76,23 @@ Object.assign(Client.prototype, {
 
   reconnect: function() {
     this.disconnect(function() {
-      this.clientOrdinal = 0;
+      this.encryptSequence = 0;
       this.sentVersion = false;
       this.connect();
     }.bind(this));
   },
 
   send: function(packet) {
-    var shouldEncrypt = isEncryptedOpcode(packet.opcode, PacketType.Client);
-
-    if (shouldEncrypt) {
-      packet.sequence = this.clientOrdinal;
-      this.clientOrdinal = uint8(this.clientOrdinal + 1);
+    if (isEncryptOpcode(packet.opcode)) {
+      packet.sequence = this.encryptSequence;
+      this.encryptSequence = uint8(this.encryptSequence + 1);
     }
 
     if (this.logOutgoing) {
       console.log("Sent: {0}".format(packet.toString()));
     }
 
-    packet.encrypt(this.crypto);
+    this.crypto.encrypt(packet);
     this.socket.send(packet.buffer());
   },
 
@@ -110,9 +108,9 @@ Object.assign(Client.prototype, {
   logIn: function() {
     console.log("Logging in as {0}... ".format(this.username));
 
-    var key1 = randomRange(0xFF);
-    var key2 = randomRange(0xFF);
-    var clientId = randomRange(0xFFFFFFFF);
+    var key1 = random(0xFF);
+    var key2 = random(0xFF);
+    var clientId = random(0xFFFFFFFF);
     var clientIdKey = uint8(key2 + 138);
 
     var clientIdArray = [
@@ -122,15 +120,14 @@ Object.assign(Client.prototype, {
       (clientId >> 24) & 0x0FF
     ];
 
-    var nexonCRC = new NexonCRC16();
-    var hash = nexonCRC.calculate(clientIdArray, 0, 4);
+    var hash = calculateCRC16(clientIdArray, 0, 4);
     var clientIdChecksum = uint16(hash);
     var clientIdChecksumKey = uint8(key2 + 0x5E);
 
     clientIdChecksum ^= uint16(clientIdChecksumKey | ((clientIdChecksumKey + 1) << 8));
     clientId ^= uint32(clientIdKey | ((clientIdKey + 1) << 8) | ((clientIdKey + 2) << 16) | ((clientIdKey + 3) << 24));
 
-    var randomValue = randomRange(0xFFFF);
+    var randomValue = random(0xFFFF);
     var randomValueKey = uint8(key2 + 115);
     randomValue ^= uint32(randomValueKey | ((randomValueKey + 1) << 8) | ((randomValueKey + 2) << 16) | ((randomValueKey + 3) << 24));
 
@@ -143,7 +140,7 @@ Object.assign(Client.prototype, {
     x03.writeUint16(clientIdChecksum);
     x03.writeUint32(randomValue);
 
-    var crc = nexonCRC.calculate(x03.body, this.username.length + this.password.length + 2, 12);
+    var crc = calculateCRC16(x03.body, this.username.length + this.password.length + 2, 12);
     var crcKey = uint8(key2 + 165);
     crc ^= uint16(crcKey | (crcKey + 1) << 8);
 
@@ -177,7 +174,6 @@ Object.assign(Client.prototype, {
     this.crypto = new Crypto(seed, key);
 
     var x57 = new ClientPacket(0x57);
-    //x57.writeUint32(0);
     x57.writeByte(0);
     x57.writeByte(0);
     x57.writeByte(0);
@@ -215,7 +211,7 @@ Object.assign(Client.prototype, {
     address = address.join('.');
 
     this.disconnect(function() {
-      this.clientOrdinal = 0;
+      this.encryptSequence = 0;
       this.connect(address, port, function() {
         var x10 = new ClientPacket(0x10);
         x10.writeByte(seed);
@@ -321,7 +317,7 @@ Object.assign(Client.prototype, {
 
       var packetBuffer = Array.from(buffer.slice(0, length));
       var packet = new ServerPacket(packetBuffer);
-      packet.decrypt(this.crypto);
+      this.crypto.decrypt(packet);
 
       if (this.logIncoming) {
         console.log("Received: {0}".format(packet.toString()));

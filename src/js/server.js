@@ -1,10 +1,10 @@
-function ServerInfo(address, port, name) {
+function Server(address, port, name) {
   this.address = address;
   this.port = port;
   this.name = name;
 }
 
-Object.assign(ServerInfo.prototype, {
+Object.assign(Server.prototype, {
   fromIPAddress: function(address, port) {
     var endPoint = "{0}:{1}".format(address, port);
     switch (endPoint) {
@@ -20,6 +20,6 @@ Object.assign(ServerInfo.prototype, {
 });
 
 
-var LoginServer = new ServerInfo('64.124.47.50', 2610, "Login Server");
-var TemuairServer = new ServerInfo('64.124.47.50', 2615, "Temuair Server");
-var MedeniaServer = new ServerInfo('64.124.47.50', 2617, "Medenia Server");
+var LoginServer = new Server('52.88.55.94', 2610, "Login Server");
+var TemuairServer = new Server('52.88.55.94', 2611, "Temuair Server");
+var MedeniaServer = new Server('52.88.55.94', 2612, "Medenia Server");

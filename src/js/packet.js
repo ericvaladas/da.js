@@ -6,7 +6,7 @@ function ClientPacket(opcode) {
 }
 
 Object.assign(ClientPacket.prototype, {
-  header: function() {
+  header() {
     var bufferLength = this.body.length + 4;
     var buffer = [];
 
@@ -18,15 +18,15 @@ Object.assign(ClientPacket.prototype, {
     return buffer
   },
 
-  bodyWithHeader: function() {
+  bodyWithHeader() {
     return this.header().concat(this.body);
   },
 
-  buffer: function() {
+  buffer() {
     return new Uint8Array(this.bodyWithHeader()).buffer;
   },
 
-  toString: function() {
+  toString() {
     var output = "";
     var body = this.bodyWithHeader();
 
@@ -38,35 +38,35 @@ Object.assign(ClientPacket.prototype, {
     return output.trim().toUpperCase();
   },
 
-  write: function(buffer) {
+  write(buffer) {
     this.body = this.body.concat(buffer);
   },
 
-  writeByte: function(value) {
+  writeByte(value) {
     this.body.push(uint8(value));
   },
 
-  writeSbyte: function(value) {
+  writeSbyte(value) {
     this.body.push(int8(value));
   },
 
-  writeBoolean: function(value) {
+  writeBoolean(value) {
     this.body.push(value ? 0x01 : 0x00);
   },
 
-  writeInt16: function(value) {
+  writeInt16(value) {
     var value = int16(value);
     this.body.push((value >> 8) & 0xFF);
     this.body.push(value & 0xFF);
   },
 
-  writeUint16: function(value) {
+  writeUint16(value) {
     var value = uint16(value);
     this.body.push((value >> 8) & 0xFF);
     this.body.push(value & 0xFF);
   },
 
-  writeInt32: function(value) {
+  writeInt32(value) {
     var value = int32(value);
     this.body.push((value >> 24) & 0xFF);
     this.body.push((value >> 16) & 0xFF);
@@ -74,7 +74,7 @@ Object.assign(ClientPacket.prototype, {
     this.body.push(value & 0xFF);
   },
 
-  writeUint32: function(value) {
+  writeUint32(value) {
     var value = uint32(value);
     this.body.push((value >> 24) & 0xFF);
     this.body.push((value >> 16) & 0xFF);
@@ -82,20 +82,20 @@ Object.assign(ClientPacket.prototype, {
     this.body.push(value & 0xFF);
   },
 
-  writeString: function(value) {
+  writeString(value) {
     var buffer = getBytes(value);
     this.body = this.body.concat(buffer);
     this.position += buffer.length;
   },
 
-  writeString8: function(value) {
+  writeString8(value) {
     var buffer = getBytes(value);
     this.body.push(buffer.length);
     this.body = this.body.concat(buffer);
     this.position += buffer.length + 1;
   },
 
-  writeString16: function(value) {
+  writeString16(value) {
     var buffer = getBytes(value);
     this.body.push((value >> 8) & 0xFF);
     this.body.push(value & 0xFF);
@@ -103,7 +103,7 @@ Object.assign(ClientPacket.prototype, {
     this.position += buffer.length + 2;
   },
 
-  encryptDialog: function() {
+  generateDialogHeader() {
     var crc = 0;
 
     this.body = this.body.slice(0, 6)
@@ -120,7 +120,9 @@ Object.assign(ClientPacket.prototype, {
     this.body[3] = (this.body.length - 4) % 256;
     this.body[4] = crc / 256;
     this.body[5] = crc % 256;
+  },
 
+  encryptDialog() {
     var length = this.body[2] << 8 | this.body[3];
     var xPrime = this.body[0] - 0x2D;
     var x = this.body[1] ^ xPrime;
@@ -144,7 +146,7 @@ function ServerPacket(buffer) {
 }
 
 Object.assign(ServerPacket.prototype, {
-  toArray: function() {
+  toArray() {
     var bufferLength = this.body.length + 4;
     var buffer = [];
 
@@ -160,7 +162,7 @@ Object.assign(ServerPacket.prototype, {
     return buffer.concat(this.body);
   },
 
-  toString: function() {
+  toString() {
     var output = "";
     var bodyArray = this.toArray();
 
@@ -172,7 +174,7 @@ Object.assign(ServerPacket.prototype, {
     return output.trim().toUpperCase();
   },
 
-  read: function(length) {
+  read(length) {
     if (this.position + length > this.body.length) {
       return 0;
     }
@@ -183,7 +185,7 @@ Object.assign(ServerPacket.prototype, {
     return buffer;
   },
 
-  readByte: function() {
+  readByte() {
     if (this.position + 1 > this.body.length) {
       return 0;
     }
@@ -194,7 +196,7 @@ Object.assign(ServerPacket.prototype, {
     return value;
   },
 
-  readSbyte: function() {
+  readSbyte() {
     if (this.position + 1 > this.body.length) {
       return 0;
     }
@@ -205,7 +207,7 @@ Object.assign(ServerPacket.prototype, {
     return value;
   },
 
-  readBoolean: function() {
+  readBoolean() {
     if (this.position + 1 > this.body.length) {
       return false;
     }
@@ -216,7 +218,7 @@ Object.assign(ServerPacket.prototype, {
     return value;
   },
 
-  readInt16: function() {
+  readInt16() {
     if (this.position + 2 > this.body.length) {
       return 0;
     }
@@ -227,7 +229,7 @@ Object.assign(ServerPacket.prototype, {
     return value;
   },
 
-  readUint16: function() {
+  readUint16() {
     if (this.position + 2 > this.body.length) {
       return 0;
     }
@@ -238,7 +240,7 @@ Object.assign(ServerPacket.prototype, {
     return value;
   },
 
-  readInt32: function() {
+  readInt32() {
     if (this.position + 4 > this.body.length) {
       return 0;
     }
@@ -249,7 +251,7 @@ Object.assign(ServerPacket.prototype, {
     return int32(value);
   },
 
-  readUint32: function() {
+  readUint32() {
     if (this.position + 4 > this.body.length) {
       return 0;
     }
@@ -260,7 +262,7 @@ Object.assign(ServerPacket.prototype, {
     return value;
   },
 
-  readString8: function() {
+  readString8() {
     if (this.position + 1 > this.body.length) {
       return "";
     }
@@ -278,7 +280,7 @@ Object.assign(ServerPacket.prototype, {
     return String.fromCharCode.apply(null, buffer)
   },
 
-  readString16: function() {
+  readString16() {
     if (this.position + 2 > this.body.length) {
       return "";
     }
@@ -294,6 +296,5 @@ Object.assign(ServerPacket.prototype, {
     this.position += length + 2;
 
     return String.fromCharCode.apply(null, buffer);
-  },
-
+  }
 });

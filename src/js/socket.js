@@ -1,9 +1,6 @@
 function Socket() {
-  this.listeners = []
-
-  chrome.sockets.tcp.onReceiveError.addListener((error) => {
-    console.log(error);
-  });
+  this.onError = (error) => { console.log(error); };
+  chrome.sockets.tcp.onReceiveError.addListener(this.onError);
 }
 
 Object.assign(Socket.prototype, {
@@ -26,17 +23,15 @@ Object.assign(Socket.prototype, {
   },
 
   removeListeners() {
-    this.listeners.forEach((listener) => {
-      chrome.sockets.tcp.onReceive.removeListener(listener);
-    });
+    chrome.sockets.tcp.onReceive.removeListener(this.onReceive);
+    chrome.sockets.tcp.onReceiveError.removeListener(this.onError);
   },
 
   receive(callback) {
-    var listener = (info) => {
+    this.onReceive = (info) => {
       callback(new Uint8Array(info.data));
     };
-    this.listeners.push(listener)
-    chrome.sockets.tcp.onReceive.addListener(listener);
+    chrome.sockets.tcp.onReceive.addListener(this.onReceive);
   },
 
   send(data) {

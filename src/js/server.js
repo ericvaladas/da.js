@@ -6,7 +6,7 @@ function Server(address, port, name) {
 
 Object.assign(Server.prototype, {
   fromIPAddress: function(address, port) {
-    var endPoint = "{0}:{1}".format(address, port);
+    var endPoint = `${address}:${port}`;
     switch (endPoint) {
       case LoginServer.endPoint(): return LoginServer;
       case TemuairServer.endPoint(): return TemuairServer;
@@ -15,7 +15,7 @@ Object.assign(Server.prototype, {
   },
 
   endPoint: function() {
-    return "{0}:{1}".format(this.address, this.port);
+    return `${this.address}:${this.port}`;
   }
 });
 

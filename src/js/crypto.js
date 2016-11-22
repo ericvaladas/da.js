@@ -1,8 +1,9 @@
 function Crypto(seed, key, name) {
   this.seed = seed || 0;
-  this.basicKey = getBytes(key || 'UrkcnItnI');
+  this.key = key || 'UrkcnItnI';
+  this.name = name;
   this.generateSalt();
-  this.generateSpecialKeyTable(name);
+  this.generateSpecialKeyTable();
 }
 
 Object.assign(Crypto.prototype, {
@@ -24,7 +25,8 @@ Object.assign(Crypto.prototype, {
       packet.body = this.transform(packet.body, specialKey, packet.sequence);
     }
     else {
-      packet.body = this.transform(packet.body, this.basicKey, packet.sequence);
+      var basicKey = getBytes(this.key);
+      packet.body = this.transform(packet.body, basicKey, packet.sequence);
     }
 
     var hash = hexToBytes(md5([packet.opcode, packet.sequence].concat(packet.body)));
@@ -61,7 +63,8 @@ Object.assign(Crypto.prototype, {
       packet.body = this.transform(packet.body, specialKey, packet.sequence);
     }
     else {
-      packet.body = this.transform(packet.body, this.basicKey, packet.sequence);
+      var basicKey = getBytes(this.key);
+      packet.body = this.transform(packet.body, basicKey, packet.sequence);
     }
   },
 
@@ -127,9 +130,9 @@ Object.assign(Crypto.prototype, {
     return specialKey;
   },
 
-  generateSpecialKeyTable: function(name) {
-    if (name) {
-      var keyTable = md5(md5(name));
+  generateSpecialKeyTable: function() {
+    if (this.name) {
+      var keyTable = md5(md5(this.name));
       for (var i = 0; i < 31; ++i) {
         keyTable += md5(keyTable);
       }

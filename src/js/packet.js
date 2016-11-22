@@ -32,7 +32,7 @@ Object.assign(ClientPacket.prototype, {
 
     for (var i in body) {
       var hex = body[i].toString(16);
-      output += "{0}{1} ".format(hex.length > 1 ? "" : "0", hex);
+      output += `${hex.length > 1 ? "" : "0"}${hex} `;
     }
 
     return output.trim().toUpperCase();
@@ -166,7 +166,7 @@ Object.assign(ServerPacket.prototype, {
 
     for (var i in bodyArray) {
       var hex = bodyArray[i].toString(16);
-      output += "{0}{1} ".format(hex.length > 1 ? "" : "0", hex);
+      output += `${hex.length > 1 ? "" : "0"}${hex} `;
     }
 
     return output.trim().toUpperCase();

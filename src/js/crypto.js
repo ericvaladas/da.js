@@ -7,29 +7,29 @@ function Crypto(seed, key, name) {
 }
 
 Object.assign(Crypto.prototype, {
-  encrypt: function(packet) {
+  encrypt(packet) {
     if (!isEncryptOpcode(packet.opcode)) {
       return;
     }
 
-    var specialKeySeed = random(0xFFFF);
-    var specialEncrypt = isSpecialEncryptOpcode(packet.opcode);
-    var a = uint16(uint16(specialKeySeed) % 65277 + 256);
-    var b = uint8(((specialKeySeed & 0xFF0000) >> 16) % 155 + 100);
+    let specialKeySeed = random(0xFFFF);
+    let specialEncrypt = isSpecialEncryptOpcode(packet.opcode);
+    let a = uint16(uint16(specialKeySeed) % 65277 + 256);
+    let b = uint8(((specialKeySeed & 0xFF0000) >> 16) % 155 + 100);
 
     packet.body.push(0);
 
     if (specialEncrypt) {
-      var specialKey = this.generateSpecialKey(a, b);
+      let specialKey = this.generateSpecialKey(a, b);
       packet.body.push(packet.opcode);
       packet.body = this.transform(packet.body, specialKey, packet.sequence);
     }
     else {
-      var basicKey = getBytes(this.key);
+      let basicKey = getBytes(this.key);
       packet.body = this.transform(packet.body, basicKey, packet.sequence);
     }
 
-    var hash = hexToBytes(md5([packet.opcode, packet.sequence].concat(packet.body)));
+    let hash = hexToBytes(md5([packet.opcode, packet.sequence].concat(packet.body)));
 
     packet.body.push(hash[13]);
     packet.body.push(hash[3]);
@@ -46,7 +46,7 @@ Object.assign(Crypto.prototype, {
     packet.body.unshift(packet.sequence);
   },
 
-  decrypt: function(packet) {
+  decrypt(packet) {
     if (!isDecryptOpcode(packet.opcode)) {
       packet.body.shift();
       return;
@@ -57,22 +57,22 @@ Object.assign(Crypto.prototype, {
     packet.body = packet.body.slice(0, packet.body.length - 3);
 
     if (isSpecialDecryptOpcode(packet.opcode)) {
-      var a = uint16(packet.body[packet.body.length - 1] << 8 | packet.body[packet.body.length - 3]) ^ 0x6474;
-      var b = packet.body[packet.body.length - 2] ^ 0x24;
-      var specialKey = this.generateSpecialKey(a, b);
+      let a = uint16(packet.body[packet.body.length - 1] << 8 | packet.body[packet.body.length - 3]) ^ 0x6474;
+      let b = packet.body[packet.body.length - 2] ^ 0x24;
+      let specialKey = this.generateSpecialKey(a, b);
       packet.body = this.transform(packet.body, specialKey, packet.sequence);
     }
     else {
-      var basicKey = getBytes(this.key);
+      let basicKey = getBytes(this.key);
       packet.body = this.transform(packet.body, basicKey, packet.sequence);
     }
   },
 
-  transform: function(buffer, key, sequence) {
+  transform(buffer, key, sequence) {
     return buffer.map(function(byte, i) {
       byte ^= this.salt[sequence];
       byte ^= key[i % 9];
-      var saltIndex = int32((i / 9) % 256);
+      let saltIndex = int32((i / 9) % 256);
       if (saltIndex != sequence) {
         byte ^= this.salt[saltIndex];
       }
@@ -80,10 +80,10 @@ Object.assign(Crypto.prototype, {
     });
   },
 
-  generateSalt: function() {
+  generateSalt() {
     salt = [];
-    var saltByte = 0;
-    for (var i = 0; i < 256; ++i) {
+    let saltByte = 0;
+    for (let i = 0; i < 256; ++i) {
       switch (this.seed) {
         case 0:
           saltByte = i;
@@ -122,18 +122,18 @@ Object.assign(Crypto.prototype, {
     this.salt = salt;
   },
 
-  generateSpecialKey: function(a, b) {
-    var specialKey = [];
-    for (var i = 0; i < 9; ++i) {
+  generateSpecialKey(a, b) {
+    let specialKey = [];
+    for (let i = 0; i < 9; ++i) {
       specialKey[i] = this.specialKeyTable[(i * (9 * i + b * b) + a) % 1024];
     }
     return specialKey;
   },
 
-  generateSpecialKeyTable: function() {
+  generateSpecialKeyTable() {
     if (this.name) {
-      var keyTable = md5(md5(this.name));
-      for (var i = 0; i < 31; ++i) {
+      let keyTable = md5(md5(this.name));
+      for (let i = 0; i < 31; ++i) {
         keyTable += md5(keyTable);
       }
       this.specialKeyTable = getBytes(keyTable);

@@ -5,10 +5,12 @@ function Socket() {
 
 Object.assign(Socket.prototype, {
   connect(ipAddress, port) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       chrome.sockets.tcp.create((socket) => {
         this.socketId = socket.socketId;
-        chrome.sockets.tcp.connect(this.socketId, ipAddress, port, resolve);
+        chrome.sockets.tcp.connect(this.socketId, ipAddress, port, (success) => {
+          success === 0 ? resolve() : reject();
+        });
       });
     });
   },
@@ -35,9 +37,11 @@ Object.assign(Socket.prototype, {
   },
 
   send(data) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       if (this.socketId) {
-        chrome.sockets.tcp.send(this.socketId, data, resolve);
+        chrome.sockets.tcp.send(this.socketId, data, (result) => {
+          result.resultCode === 0 ? resolve() : reject();
+        });
       }
     });
   }

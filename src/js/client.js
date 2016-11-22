@@ -39,12 +39,10 @@ Object.assign(Client.prototype, {
 
     this.socket = new Socket();
     return this.socket.connect(address, port)
-      .then((success) => {
-        if (success === 0) {
-          console.log("Connected.");
-          this.server = server;
-          this.socket.receive(this.receive.bind(this));
-        }
+      .then(() => {
+        console.log("Connected.");
+        this.server = server;
+        this.socket.receive(this.receive.bind(this));
       });
   },
 
@@ -67,22 +65,17 @@ Object.assign(Client.prototype, {
   },
 
   send(packet) {
-    return new Promise((resolve, reject) => {
-      if (isEncryptOpcode(packet.opcode)) {
-        packet.sequence = this.encryptSequence;
-        this.encryptSequence = uint8(this.encryptSequence + 1);
-      }
+    if (isEncryptOpcode(packet.opcode)) {
+      packet.sequence = this.encryptSequence;
+      this.encryptSequence = uint8(this.encryptSequence + 1);
+    }
 
-      if (this.logOutgoing) {
-        console.log(`Sent: ${packet.toString()}`);
-      }
+    if (this.logOutgoing) {
+      console.log(`Sent: ${packet.toString()}`);
+    }
 
-      this.crypto.encrypt(packet);
-      this.socket.send(packet.buffer())
-        .then((result) => {
-          result.resultCode === 0 ? resolve() : reject();
-        });
-    });
+    this.crypto.encrypt(packet);
+    return this.socket.send(packet.buffer());
   },
 
   confirmIdentity(id) {
@@ -142,13 +135,13 @@ Object.assign(Client.prototype, {
   packetHandler_0x00_encryption(packet) {
     let code = packet.readByte();
 
-    if (code == 1) {
+    if (code === 1) {
       this.clientVersion -= 1;
       console.log(`Invalid DA version, possibly too high. Trying again with ${this.clientVersion}.`);
       this.reconnect();
       return;
     }
-    else if (code == 2) {
+    else if (code === 2) {
       let version = packet.readInt16();
       packet.readByte();
       packet.readString8();  // patch url

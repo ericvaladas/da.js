@@ -1,47 +1,49 @@
-function Socket() {
-  this.listeners = []
-
-  chrome.sockets.tcp.onReceiveError.addListener(function(error) {
-    console.log(error);
-  });
+export default function Socket() {
+  this.onError = (error) => { console.log(error); };
+  chrome.sockets.tcp.onReceiveError.addListener(this.onError);
 }
 
 Object.assign(Socket.prototype, {
-  connect: function(ipAddress, port, callback) {
-    callback = callback ? callback : function() {};
-    chrome.sockets.tcp.create(function(socket) {
-      this.socketId = socket.socketId;
-      chrome.sockets.tcp.connect(this.socketId, ipAddress, port, callback);
-    }.bind(this));
-  },
-
-  disconnect: function(callback) {
-    callback = callback ? callback : function() {};
-    this.removeListeners();
-    chrome.sockets.tcp.disconnect(this.socketId, function() {
-      chrome.sockets.tcp.close(this.socketId, callback);
-    }.bind(this));
-  },
-
-  removeListeners: function() {
-    this.listeners.forEach(function(listener) {
-      chrome.sockets.tcp.onReceive.removeListener(listener);
+  connect(ipAddress, port) {
+    return new Promise((resolve, reject) => {
+      chrome.sockets.tcp.create((socket) => {
+        this.socketId = socket.socketId;
+        chrome.sockets.tcp.connect(this.socketId, ipAddress, port, (success) => {
+          return success === 0 ? resolve() : reject();
+        });
+      });
     });
   },
 
-  receive: function(callback) {
-    var listener = function(info) {
-      callback(new Uint8Array(info.data));
-    };
-    this.listeners.push(listener)
-    chrome.sockets.tcp.onReceive.addListener(listener);
+  disconnect() {
+    return new Promise((resolve) => {
+      this.removeListeners();
+      chrome.sockets.tcp.disconnect(this.socketId, () => {
+        chrome.sockets.tcp.close(this.socketId, resolve);
+      });
+    });
   },
 
-  send: function(data, callback) {
-    if (this.socketId) {
-      callback = callback ? callback : function() {};
-      chrome.sockets.tcp.send(this.socketId, data, callback);
-    }
+  removeListeners() {
+    chrome.sockets.tcp.onReceive.removeListener(this.onReceive);
+    chrome.sockets.tcp.onReceiveError.removeListener(this.onError);
+  },
+
+  receive(callback) {
+    this.onReceive = (info) => {
+      callback(new Uint8Array(info.data));
+    };
+    chrome.sockets.tcp.onReceive.addListener(this.onReceive);
+  },
+
+  send(data) {
+    return new Promise((resolve, reject) => {
+      if (this.socketId) {
+        chrome.sockets.tcp.send(this.socketId, data, (result) => {
+          return result.resultCode === 0 ? resolve() : reject();
+        });
+      }
+    });
   }
 });
 

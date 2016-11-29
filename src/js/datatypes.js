@@ -22,3 +22,4 @@ function int32(value) {
   return value | 0;
 }
 
+export {uint8, int8, uint16, int16, uint32, int32};

@@ -1,0 +1,13 @@
+{
+  "parserOptions": {
+    "ecmaVersion": 6,
+    "sourceType": "module",
+  },
+  "extends": [
+    "./node_modules/pleaserc/.eslintrc"
+  ],
+  "env": {
+    "node": true,
+    "es6": true
+  }
+}

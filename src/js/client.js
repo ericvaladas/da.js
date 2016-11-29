@@ -1,18 +1,14 @@
-// Implement string format method
-if (!String.prototype.format) {
-  String.prototype.format = function() {
-    var args = arguments;
-    return this.replace(/{(\d+)}/g, function(match, number) {
-      return typeof args[number] != 'undefined'
-        ? args[number]
-        : match
-      ;
-    });
-  };
-}
+import Socket from './socket';
+import {Server, LoginServer} from './server';
+import {Crypto, isEncryptOpcode} from './crypto';
+import {uint8, uint16, uint32, int32} from './datatypes';
+import {calculateCRC16} from './crc';
+import {random} from './util';
+import {ClientPacket, ServerPacket} from './packet';
+
 
 function Client(username, password) {
-  this.daVersion = 741;
+  this.clientVersion = 741;
   this.username = username;
   this.password = password;
   this.crypto = new Crypto();
@@ -37,101 +33,107 @@ function Client(username, password) {
 }
 
 Object.assign(Client.prototype, {
-  tickCount: function() {
+  tickCount() {
     return new Date().getTime() - this.startTime;
   },
 
-  connect: function(address, port, callback) {
+  connect(address, port) {
     if (!address) {
       address = LoginServer.address;
       port = LoginServer.port;
     }
 
-    var server = new Server().fromIPAddress(address, port);
-
-    console.log("Connecting to {0}...".format(server.name));
+    let server = new Server().fromIPAddress(address, port);
+    console.log(`Connecting to ${server.name}...`);
 
     this.socket = new Socket();
-    this.socket.connect(address, port, function(success) {
-      if (success == 0) {
-        console.log("Connected.");
+    return this.socket.connect(address, port)
+      .then(() => {
+        console.log('Connected.');
         this.server = server;
         this.socket.receive(this.receive.bind(this));
-
-        if (callback) {
-          callback();
-        }
-      }
-    }.bind(this));
+      });
   },
 
-  disconnect: function(callback) {
+  disconnect() {
     if (this.server) {
-      console.log("Disconnected from {0}.".format(this.server.name));
+      console.log(`Disconnected from ${this.server.name}.`);
     }
     if (this.socket) {
-      this.socket.disconnect(callback);
+      return this.socket.disconnect();
     }
   },
 
-  reconnect: function() {
-    this.disconnect(function() {
-      this.encryptSequence = 0;
-      this.sentVersion = false;
-      this.connect();
-    }.bind(this));
+  reconnect(address, port) {
+    return this.disconnect()
+      .then(() => {
+        this.encryptSequence = 0;
+        this.sentVersion = false;
+        return this.connect(address, port);
+      });
   },
 
-  send: function(packet) {
+  send(packet) {
     if (isEncryptOpcode(packet.opcode)) {
       packet.sequence = this.encryptSequence;
       this.encryptSequence = uint8(this.encryptSequence + 1);
     }
 
     if (this.logOutgoing) {
-      console.log("Sent: {0}".format(packet.toString()));
+      console.log(`Sent: ${packet.toString()}`);
     }
 
     this.crypto.encrypt(packet);
-    this.socket.send(packet.buffer());
+    return this.socket.send(packet.buffer());
   },
 
-  connectedToLogin: function() {
-    this.logIn();
+  confirmIdentity(id) {
+    let x10 = new ClientPacket(0x10);
+    x10.writeByte(this.crypto.seed);
+    x10.writeString8(this.crypto.key);
+    x10.writeString8(this.crypto.name);
+    x10.writeUint32(id);
+    x10.writeByte(0x00);
+    return this.send(x10);
   },
 
-  connectedToWorld: function() {
-    console.log("Logged into {0} as {1}.".format(this.server.name, this.username));
-    this.send(new ClientPacket(0x2D));
-  },
+  logIn() {
+    console.log(`Logging in as ${this.username}...`);
 
-  logIn: function() {
-    console.log("Logging in as {0}... ".format(this.username));
+    let key1 = random(0xFF);
+    let key2 = random(0xFF);
+    let clientId = random(0xFFFFFFFF);
+    let clientIdKey = uint8(key2 + 138);
 
-    var key1 = random(0xFF);
-    var key2 = random(0xFF);
-    var clientId = random(0xFFFFFFFF);
-    var clientIdKey = uint8(key2 + 138);
-
-    var clientIdArray = [
+    let clientIdArray = [
       clientId & 0x0FF,
       (clientId >> 8) & 0x0FF,
       (clientId >> 16) & 0x0FF,
       (clientId >> 24) & 0x0FF
     ];
 
-    var hash = calculateCRC16(clientIdArray, 0, 4);
-    var clientIdChecksum = uint16(hash);
-    var clientIdChecksumKey = uint8(key2 + 0x5E);
+    let hash = calculateCRC16(clientIdArray, 0, 4);
+    let clientIdChecksum = uint16(hash);
+    let clientIdChecksumKey = uint8(key2 + 0x5E);
 
     clientIdChecksum ^= uint16(clientIdChecksumKey | ((clientIdChecksumKey + 1) << 8));
-    clientId ^= uint32(clientIdKey | ((clientIdKey + 1) << 8) | ((clientIdKey + 2) << 16) | ((clientIdKey + 3) << 24));
+    clientId ^= uint32(
+      clientIdKey |
+      ((clientIdKey + 1) << 8) |
+      ((clientIdKey + 2) << 16) |
+      ((clientIdKey + 3) << 24)
+    );
 
-    var randomValue = random(0xFFFF);
-    var randomValueKey = uint8(key2 + 115);
-    randomValue ^= uint32(randomValueKey | ((randomValueKey + 1) << 8) | ((randomValueKey + 2) << 16) | ((randomValueKey + 3) << 24));
+    let randomValue = random(0xFFFF);
+    let randomValueKey = uint8(key2 + 115);
+    randomValue ^= uint32(
+      randomValueKey |
+      ((randomValueKey + 1) << 8) |
+      ((randomValueKey + 2) << 16) |
+      ((randomValueKey + 3) << 24)
+    );
 
-    var x03 = new ClientPacket(0x03);
+    let x03 = new ClientPacket(0x03);
     x03.writeString8(this.username);
     x03.writeString8(this.password);
     x03.writeByte(key1);
@@ -140,8 +142,8 @@ Object.assign(Client.prototype, {
     x03.writeUint16(clientIdChecksum);
     x03.writeUint32(randomValue);
 
-    var crc = calculateCRC16(x03.body, this.username.length + this.password.length + 2, 12);
-    var crcKey = uint8(key2 + 165);
+    let crc = calculateCRC16(x03.body, this.username.length + this.password.length + 2, 12);
+    let crcKey = uint8(key2 + 165);
     crc ^= uint16(crcKey | (crcKey + 1) << 8);
 
     x03.writeUint16(crc);
@@ -149,139 +151,131 @@ Object.assign(Client.prototype, {
     this.send(x03);
   },
 
-  packetHandler_0x00_encryption: function(packet) {
-    var code = packet.readByte();
+  packetHandler_0x00_encryption(packet) {
+    let code = packet.readByte();
 
-    if (code == 1) {
-      this.daVersion -= 1;
-      console.log("Invalid DA version, possibly too high. Trying again with {0}.".format(this.daVersion));
+    if (code === 1) {
+      this.clientVersion -= 1;
+      console.log(`Invalid DA version, possibly too high. Trying again with ${this.clientVersion}.`);
       this.reconnect();
       return;
     }
-    else if (code == 2) {
-      var version = packet.readInt16();
+    else if (code === 2) {
+      let version = packet.readInt16();
       packet.readByte();
       packet.readString8();  // patch url
-      this.daVersion = version;
-      console.log("Your DA version is too low. Setting DA version to {0}.".format(version));
+      this.clientVersion = version;
+      console.log(`Your DA version is too low. Setting DA version to ${version}.`);
       this.reconnect();
       return;
     }
 
     packet.readUint32();  // server table crc
-    var seed = packet.readByte();
-    var key = packet.readString8();
+    let seed = packet.readByte();
+    let key = packet.readString8();
     this.crypto = new Crypto(seed, key);
 
-    var x57 = new ClientPacket(0x57);
+    let x57 = new ClientPacket(0x57);
     x57.writeByte(0);
     x57.writeByte(0);
     x57.writeByte(0);
     this.send(x57);
   },
 
-  packetHandler_0x02_loginMessage: function(packet) {
-    var code = packet.readByte();
-    var message = packet.readString8();
+  packetHandler_0x02_loginMessage(packet) {
+    let code = packet.readByte();
+    let message = packet.readString8();
 
-    if (code == 0 || code == 3 || code == 14 || code == 15) {
-      // code 0: Success
-      // code 3: Invalid name or password
-      // code 14: Name does not exist
-      // code 15: Incorrect password
-      console.log(message);
-    }
-    else {
-      console.log("Log in failed");
+    switch (code) {
+      case 0: // Success
+      case 3: // Invalid name or password
+      case 14: // Name does not exist
+      case 15: // Incorrect password
+        console.log(message);
+        break;
+      default:
+        console.log('Log in failed');
     }
   },
 
-  packetHandler_0x03_redirect: function(packet) {
-    var address = packet.read(4);
-    var port = packet.readUint16();
+  packetHandler_0x03_redirect(packet) {
+    let address = packet.read(4);
+    let port = packet.readUint16();
     packet.readByte();  // remaining
-    var seed = packet.readByte();
-    var key = packet.readString8();
-    var name = packet.readString8();
-    var id = packet.readUint32();
+    let seed = packet.readByte();
+    let key = packet.readString8();
+    let name = packet.readString8();
+    let id = packet.readUint32();
 
     this.crypto = new Crypto(seed, key, name);
 
     address.reverse();
     address = address.join('.');
 
-    this.disconnect(function() {
-      this.encryptSequence = 0;
-      this.connect(address, port, function() {
-        var x10 = new ClientPacket(0x10);
-        x10.writeByte(seed);
-        x10.writeString8(key);
-        x10.writeString8(name);
-        x10.writeUint32(id);
-        x10.writeByte(0x00);
-        this.send(x10);
-
-        if (this.server == LoginServer) {
-          this.connectedToLogin();
+    this.reconnect(address, port)
+      .then(() => { return this.confirmIdentity(id); })
+      .then(() => {
+        if (this.server === LoginServer) {
+          this.logIn();
         }
-      }.bind(this));
-    }.bind(this));
+      });
   },
 
-  packetHandler_0x05_userId: function(packet) {
-    this.connectedToWorld();
+  packetHandler_0x05_userId() {
+    // TODO: Does this ID get used later to confirm identity?
+    console.log(`Logged into ${this.server.name} as ${this.username}.`);
+    this.send(new ClientPacket(0x2D));
   },
 
-  packetHandler_0x0A_systemMessage: function(packet) {
+  packetHandler_0x0A_systemMessage(packet) {
     packet.readByte();
-    var message = packet.readString16();
-
+    let message = packet.readString16();
     console.log(message);
   },
 
-  packetHandler_0x0D_chat: function(packet) {
-
+  packetHandler_0x0D_chat() {
+    // TODO
   },
 
-  say: function(message) {
-    var x0E = new ClientPacket(0x0E);
+  say(message) {
+    let x0E = new ClientPacket(0x0E);
     x0E.writeBoolean(false);
     x0E.writeString8(message);
     this.send(x0E);
   },
 
 
-  packetHandler_0x3B_pingA: function(packet) {
-    var hiByte = packet.readByte();
-    var loByte = packet.readByte();
-
-    var x45 = new ClientPacket(0x45);
+  packetHandler_0x3B_pingA(packet) {
+    let hiByte = packet.readByte();
+    let loByte = packet.readByte();
+    let x45 = new ClientPacket(0x45);
     x45.writeByte(loByte);
     x45.writeByte(hiByte);
     this.send(x45);
   },
 
-  packetHandler_0x4C_endingSignal: function(packet) {
-    var x0B = new ClientPacket(0x0B);
-    x0B.writeBoolean(False);
+  packetHandler_0x4C_endingSignal() {
+    // TODO: does this handler ever get called?
+    let x0B = new ClientPacket(0x0B);
+    x0B.writeBoolean(false);
     this.send(x0B);
   },
 
-  packetHandler_0x68_pingB: function(packet) {
-    var timestamp = packet.readInt32();
-
-    var x75 = new ClientPacket(0x75);
+  packetHandler_0x68_pingB(packet) {
+    let timestamp = packet.readInt32();
+    let x75 = new ClientPacket(0x75);
     x75.writeInt32(timestamp);
     x75.writeInt32(int32(this.tickCount()));
     this.send(x75);
   },
 
-  packetHandler_0x7E_welome: function(packet) {
+  packetHandler_0x7E_welome() {
+    // TODO: Is there anything in this packet I should be capturing?
     if (this.sentVersion) {
       return;
     }
 
-    var x62 = new ClientPacket(0x62);
+    let x62 = new ClientPacket(0x62);
     x62.writeByte(0x34);
     x62.writeByte(0x00);
     x62.writeByte(0x0A);
@@ -290,37 +284,37 @@ Object.assign(Client.prototype, {
     x62.writeByte(0x59);
     x62.writeByte(0x59);
     x62.writeByte(0x75);
-    this.send(x62);
-
-    var x00 = new ClientPacket(0x00);
-    x00.writeInt16(this.daVersion);
-    x00.writeByte(0x4C);
-    x00.writeByte(0x4B);
-    x00.writeByte(0x00);
-    this.send(x00);
-
-    this.sentVersion = true;
+    this.send(x62)
+      .then(() => {
+        let x00 = new ClientPacket(0x00);
+        x00.writeInt16(this.clientVersion);
+        x00.writeByte(0x4C);
+        x00.writeByte(0x4B);
+        x00.writeByte(0x00);
+        this.send(x00);
+        this.sentVersion = true;
+      });
   },
 
-  receive: function(buffer) {
+  receive(buffer) {
     if (!buffer) {
       this.disconnect();
       return;
     }
 
     while (buffer.length > 3 && buffer[0] === 0xAA) {
-      var length = buffer[1] << 8 | buffer[2] + 3;
+      let length = buffer[1] << 8 | buffer[2] + 3;
 
       if (length > buffer.length) {
         break;
       }
 
-      var packetBuffer = Array.from(buffer.slice(0, length));
-      var packet = new ServerPacket(packetBuffer);
+      let packetBuffer = Array.from(buffer.slice(0, length));
+      let packet = new ServerPacket(packetBuffer);
       this.crypto.decrypt(packet);
 
       if (this.logIncoming) {
-        console.log("Received: {0}".format(packet.toString()));
+        console.log(`Received: ${packet.toString()}`);
       }
 
       if (packet.opcode in this.packetHandlers) {
@@ -331,3 +325,6 @@ Object.assign(Client.prototype, {
     }
   }
 });
+
+
+window.Client = Client;

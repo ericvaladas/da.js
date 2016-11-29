@@ -1,0 +1,30 @@
+{
+  "name": "da.js",
+  "version": "0.0.1",
+  "description": "A Dark Ages client written in Javascript",
+  "main": "client.js",
+  "dependencies": {
+    "babel-core": "^6.18.2",
+    "babel-loader": "^6.2.8",
+    "babel-preset-latest": "^6.16.0",
+    "eslint": "^3.11.1",
+    "md5": "^2.2.1",
+    "pleaserc": "^2.3.0",
+    "webpack": "^1.13.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "build": "webpack",
+    "lint": "eslint src"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ericvaladas/da.js.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ericvaladas/da.js/issues"
+  },
+  "homepage": "https://github.com/ericvaladas/da.js#readme"
+}

@@ -1,4 +1,7 @@
-var dialogCRCTable = [
+import {uint16} from './datatypes';
+
+
+const dialogCRCTable = [
   0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50A5, 0x60C6, 0x70E7,
   0x8108, 0x9129, 0xA14A, 0xB16B, 0xC18C, 0xD1AD, 0xE1CE, 0xF1EF,
   0x1231, 0x0210, 0x3273, 0x2252, 0x52B5, 0x4294, 0x72F7, 0x62D6,
@@ -33,7 +36,7 @@ var dialogCRCTable = [
   0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1, 0x1EF0
 ];
 
-var nexonCRC16Table = [
+const nexonCRC16Table = [
   0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50A5, 0x60C6, 0x70E7,
   0x8108, 0x9129, 0xA14A, 0xB16B, 0xC18C, 0xD1AD, 0xE1CE, 0xF1EF,
   0x1231, 0x0210, 0x3273, 0x2252, 0x52B5, 0x4294, 0x72F7, 0x62D6,
@@ -69,18 +72,21 @@ var nexonCRC16Table = [
 ];
 
 function calculateCRC16(buffer, index, length) {
-  var crc = 0;
+  let crc = 0;
 
   if (length) {
     index = index || 0;
-    buffer.slice(index, index + length).forEach(function(byte) {
+    buffer.slice(index, index + length).forEach((byte) => {
       crc = uint16(byte ^ (uint16(crc << 8) ^ uint16(nexonCRC16Table[crc >> 8])));
     });
   }
   else {
-    buffer.forEach(function(byte) {
+    buffer.forEach((byte) => {
       crc = uint16((crc << 8) ^ nexonCRC16Table[crc >> 8] ^ byte);
     });
   }
   return crc;
 }
+
+
+export {dialogCRCTable, nexonCRC16Table, calculateCRC16};

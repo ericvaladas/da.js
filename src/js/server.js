@@ -4,9 +4,13 @@ function Server(address, port, name) {
   this.name = name;
 }
 
+let LoginServer = new Server('52.88.55.94', 2610, 'Login Server');
+let TemuairServer = new Server('52.88.55.94', 2611, 'Temuair Server');
+let MedeniaServer = new Server('52.88.55.94', 2612, 'Medenia Server');
+
 Object.assign(Server.prototype, {
-  fromIPAddress: function(address, port) {
-    var endPoint = `${address}:${port}`;
+  fromIPAddress(address, port) {
+    let endPoint = `${address}:${port}`;
     switch (endPoint) {
       case LoginServer.endPoint(): return LoginServer;
       case TemuairServer.endPoint(): return TemuairServer;
@@ -14,12 +18,10 @@ Object.assign(Server.prototype, {
     }
   },
 
-  endPoint: function() {
+  endPoint() {
     return `${this.address}:${this.port}`;
   }
 });
 
 
-var LoginServer = new Server('52.88.55.94', 2610, "Login Server");
-var TemuairServer = new Server('52.88.55.94', 2611, "Temuair Server");
-var MedeniaServer = new Server('52.88.55.94', 2612, "Medenia Server");
+export {Server, LoginServer, TemuairServer, MedeniaServer};

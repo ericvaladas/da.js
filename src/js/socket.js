@@ -1,4 +1,4 @@
-function Socket() {
+export default function Socket() {
   this.onError = (error) => { console.log(error); };
   chrome.sockets.tcp.onReceiveError.addListener(this.onError);
 }
@@ -9,7 +9,7 @@ Object.assign(Socket.prototype, {
       chrome.sockets.tcp.create((socket) => {
         this.socketId = socket.socketId;
         chrome.sockets.tcp.connect(this.socketId, ipAddress, port, (success) => {
-          success === 0 ? resolve() : reject();
+          return success === 0 ? resolve() : reject();
         });
       });
     });
@@ -40,7 +40,7 @@ Object.assign(Socket.prototype, {
     return new Promise((resolve, reject) => {
       if (this.socketId) {
         chrome.sockets.tcp.send(this.socketId, data, (result) => {
-          result.resultCode === 0 ? resolve() : reject();
+          return result.resultCode === 0 ? resolve() : reject();
         });
       }
     });

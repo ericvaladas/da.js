@@ -1,3 +1,12 @@
+import Socket from './socket';
+import {Server, LoginServer} from './server';
+import {Crypto, isEncryptOpcode} from './crypto';
+import {uint8, uint16, uint32, int32} from './datatypes';
+import {calculateCRC16} from './crc';
+import {random} from './util';
+import {ClientPacket, ServerPacket} from './packet';
+
+
 function Client(username, password) {
   this.clientVersion = 741;
   this.username = username;
@@ -40,7 +49,7 @@ Object.assign(Client.prototype, {
     this.socket = new Socket();
     return this.socket.connect(address, port)
       .then(() => {
-        console.log("Connected.");
+        console.log('Connected.');
         this.server = server;
         this.socket.receive(this.receive.bind(this));
       });
@@ -51,7 +60,7 @@ Object.assign(Client.prototype, {
       console.log(`Disconnected from ${this.server.name}.`);
     }
     if (this.socket) {
-      return this.socket.disconnect()
+      return this.socket.disconnect();
     }
   },
 
@@ -108,11 +117,21 @@ Object.assign(Client.prototype, {
     let clientIdChecksumKey = uint8(key2 + 0x5E);
 
     clientIdChecksum ^= uint16(clientIdChecksumKey | ((clientIdChecksumKey + 1) << 8));
-    clientId ^= uint32(clientIdKey | ((clientIdKey + 1) << 8) | ((clientIdKey + 2) << 16) | ((clientIdKey + 3) << 24));
+    clientId ^= uint32(
+      clientIdKey |
+      ((clientIdKey + 1) << 8) |
+      ((clientIdKey + 2) << 16) |
+      ((clientIdKey + 3) << 24)
+    );
 
     let randomValue = random(0xFFFF);
     let randomValueKey = uint8(key2 + 115);
-    randomValue ^= uint32(randomValueKey | ((randomValueKey + 1) << 8) | ((randomValueKey + 2) << 16) | ((randomValueKey + 3) << 24));
+    randomValue ^= uint32(
+      randomValueKey |
+      ((randomValueKey + 1) << 8) |
+      ((randomValueKey + 2) << 16) |
+      ((randomValueKey + 3) << 24)
+    );
 
     let x03 = new ClientPacket(0x03);
     x03.writeString8(this.username);
@@ -175,7 +194,7 @@ Object.assign(Client.prototype, {
         console.log(message);
         break;
       default:
-        console.log("Log in failed");
+        console.log('Log in failed');
     }
   },
 
@@ -202,7 +221,8 @@ Object.assign(Client.prototype, {
       });
   },
 
-  packetHandler_0x05_userId(packet) {
+  packetHandler_0x05_userId() {
+    // TODO: Does this ID get used later to confirm identity?
     console.log(`Logged into ${this.server.name} as ${this.username}.`);
     this.send(new ClientPacket(0x2D));
   },
@@ -213,8 +233,8 @@ Object.assign(Client.prototype, {
     console.log(message);
   },
 
-  packetHandler_0x0D_chat(packet) {
-
+  packetHandler_0x0D_chat() {
+    // TODO
   },
 
   say(message) {
@@ -234,9 +254,10 @@ Object.assign(Client.prototype, {
     this.send(x45);
   },
 
-  packetHandler_0x4C_endingSignal(packet) {
+  packetHandler_0x4C_endingSignal() {
+    // TODO: does this handler ever get called?
     let x0B = new ClientPacket(0x0B);
-    x0B.writeBoolean(False);
+    x0B.writeBoolean(false);
     this.send(x0B);
   },
 
@@ -248,7 +269,8 @@ Object.assign(Client.prototype, {
     this.send(x75);
   },
 
-  packetHandler_0x7E_welome(packet) {
+  packetHandler_0x7E_welome() {
+    // TODO: Is there anything in this packet I should be capturing?
     if (this.sentVersion) {
       return;
     }
@@ -303,3 +325,6 @@ Object.assign(Client.prototype, {
     }
   }
 });
+
+
+window.Client = Client;

@@ -1,3 +1,8 @@
+import {uint8, int8, uint16, int16, uint32, int32} from './datatypes';
+import {dialogCRCTable} from './crc';
+import {random} from './util';
+
+
 function ClientPacket(opcode) {
   this.opcode = opcode;
   this.sequence = 0;
@@ -7,15 +12,15 @@ function ClientPacket(opcode) {
 
 Object.assign(ClientPacket.prototype, {
   header() {
-    var bufferLength = this.body.length + 4;
-    var buffer = [];
+    const bufferLength = this.body.length + 4;
+    let buffer = [];
 
     buffer.push(0xAA);
     buffer.push(uint8((bufferLength - 3) / 256));
     buffer.push(uint8(bufferLength - 3));
     buffer.push(this.opcode);
 
-    return buffer
+    return buffer;
   },
 
   bodyWithHeader() {
@@ -27,12 +32,12 @@ Object.assign(ClientPacket.prototype, {
   },
 
   toString() {
-    var output = "";
-    var body = this.bodyWithHeader();
+    let output = '';
+    const body = this.bodyWithHeader();
 
-    for (var i in body) {
-      var hex = body[i].toString(16);
-      output += `${hex.length > 1 ? "" : "0"}${hex} `;
+    for (let i in body) {
+      const hex = body[i].toString(16);
+      output += `${hex.length > 1 ? '' : '0'}${hex} `;
     }
 
     return output.trim().toUpperCase();
@@ -55,19 +60,19 @@ Object.assign(ClientPacket.prototype, {
   },
 
   writeInt16(value) {
-    var value = int16(value);
+    value = int16(value);
     this.body.push((value >> 8) & 0xFF);
     this.body.push(value & 0xFF);
   },
 
   writeUint16(value) {
-    var value = uint16(value);
+    value = uint16(value);
     this.body.push((value >> 8) & 0xFF);
     this.body.push(value & 0xFF);
   },
 
   writeInt32(value) {
-    var value = int32(value);
+    value = int32(value);
     this.body.push((value >> 24) & 0xFF);
     this.body.push((value >> 16) & 0xFF);
     this.body.push((value >> 8) & 0xFF);
@@ -75,7 +80,7 @@ Object.assign(ClientPacket.prototype, {
   },
 
   writeUint32(value) {
-    var value = uint32(value);
+    value = uint32(value);
     this.body.push((value >> 24) & 0xFF);
     this.body.push((value >> 16) & 0xFF);
     this.body.push((value >> 8) & 0xFF);
@@ -83,20 +88,20 @@ Object.assign(ClientPacket.prototype, {
   },
 
   writeString(value) {
-    var buffer = getBytes(value);
+    const buffer = Array.from(new Buffer(value));
     this.body = this.body.concat(buffer);
     this.position += buffer.length;
   },
 
   writeString8(value) {
-    var buffer = getBytes(value);
+    const buffer = Array.from(new Buffer(value));
     this.body.push(buffer.length);
     this.body = this.body.concat(buffer);
     this.position += buffer.length + 1;
   },
 
   writeString16(value) {
-    var buffer = getBytes(value);
+    const buffer = Array.from(new Buffer(value));
     this.body.push((value >> 8) & 0xFF);
     this.body.push(value & 0xFF);
     this.body = this.body.concat(buffer);
@@ -104,18 +109,18 @@ Object.assign(ClientPacket.prototype, {
   },
 
   generateDialogHeader() {
-    var crc = 0;
+    let crc = 0;
 
     this.body = this.body.slice(0, 6)
       .concat(this.body.slice(0, this.body.length - 6))
       .concat(this.body.slice(6));
 
-    for (var i = 0; this.body.length - 6; i++) {
+    for (let i = 0; this.body.length - 6; i++) {
       crc = this.body[6 + i] ^ ((crc << 8) ^ dialogCRCTable[crc >> 8]);
     }
 
-    this.body[0] = random(0, 255);
-    this.body[1] = random(0, 255);
+    this.body[0] = random(255);
+    this.body[1] = random(255);
     this.body[2] = (this.body.length - 4) / 256;
     this.body[3] = (this.body.length - 4) % 256;
     this.body[4] = crc / 256;
@@ -123,15 +128,15 @@ Object.assign(ClientPacket.prototype, {
   },
 
   encryptDialog() {
-    var length = this.body[2] << 8 | this.body[3];
-    var xPrime = this.body[0] - 0x2D;
-    var x = this.body[1] ^ xPrime;
-    var y = x + 0x72;
-    var z = x + 0x28;
+    let length = this.body[2] << 8 | this.body[3];
+    let xPrime = this.body[0] - 0x2D;
+    let x = this.body[1] ^ xPrime;
+    let y = x + 0x72;
+    let z = x + 0x28;
     this.body[2] ^= y;
     this.body[3] ^= (y + 1) % 256;
 
-    for (var i = 0; i < length; i++) {
+    for (let i = 0; i < length; i++) {
       this.body[4 + i] ^= (z + i) % 256;
     }
   }
@@ -147,8 +152,8 @@ function ServerPacket(buffer) {
 
 Object.assign(ServerPacket.prototype, {
   toArray() {
-    var bufferLength = this.body.length + 4;
-    var buffer = [];
+    let bufferLength = this.body.length + 4;
+    let buffer = [];
 
     buffer.push(0xAA);
     buffer.push(uint8((bufferLength - 3) / 256));
@@ -163,12 +168,12 @@ Object.assign(ServerPacket.prototype, {
   },
 
   toString() {
-    var output = "";
-    var bodyArray = this.toArray();
+    let output = '';
+    let bodyArray = this.toArray();
 
-    for (var i in bodyArray) {
-      var hex = bodyArray[i].toString(16);
-      output += `${hex.length > 1 ? "" : "0"}${hex} `;
+    for (let i in bodyArray) {
+      let hex = bodyArray[i].toString(16);
+      output += `${hex.length > 1 ? '' : '0'}${hex} `;
     }
 
     return output.trim().toUpperCase();
@@ -179,7 +184,7 @@ Object.assign(ServerPacket.prototype, {
       return 0;
     }
 
-    var buffer = this.body.slice(this.position, length);
+    let buffer = this.body.slice(this.position, length);
     this.position += length;
 
     return buffer;
@@ -190,7 +195,7 @@ Object.assign(ServerPacket.prototype, {
       return 0;
     }
 
-    var value = this.body[this.position];
+    let value = this.body[this.position];
     this.position += 1;
 
     return value;
@@ -201,7 +206,7 @@ Object.assign(ServerPacket.prototype, {
       return 0;
     }
 
-    var value = this.body[this.position];
+    let value = this.body[this.position];
     this.position += 1;
 
     return value;
@@ -212,7 +217,7 @@ Object.assign(ServerPacket.prototype, {
       return false;
     }
 
-    var value = this.body[this.position] != 0;
+    let value = this.body[this.position] !== 0;
     this.position += 1;
 
     return value;
@@ -223,7 +228,7 @@ Object.assign(ServerPacket.prototype, {
       return 0;
     }
 
-    var value = this.body[this.position] << 8 | this.body[this.position + 1];
+    let value = this.body[this.position] << 8 | this.body[this.position + 1];
     this.position += 2;
 
     return value;
@@ -234,7 +239,7 @@ Object.assign(ServerPacket.prototype, {
       return 0;
     }
 
-    var value = this.body[this.position] << 8 | this.body[this.position + 1];
+    let value = this.body[this.position] << 8 | this.body[this.position + 1];
     this.position += 2;
 
     return value;
@@ -245,7 +250,12 @@ Object.assign(ServerPacket.prototype, {
       return 0;
     }
 
-    var value = this.body[this.position] << 24 | this.body[this.position + 1] << 16 | this.body[this.position + 2] << 8 | this.body[this.position + 3];
+    let value = (
+      this.body[this.position] << 24 |
+      this.body[this.position + 1] << 16 |
+      this.body[this.position + 2] << 8 |
+      this.body[this.position + 3]
+    );
     this.position += 4;
 
     return int32(value);
@@ -256,7 +266,12 @@ Object.assign(ServerPacket.prototype, {
       return 0;
     }
 
-    var value = this.body[this.position] << 24 | this.body[this.position + 1] << 16 | this.body[this.position + 2] << 8 | this.body[this.position + 3];
+    let value = (
+      this.body[this.position] << 24 |
+      this.body[this.position + 1] << 16 |
+      this.body[this.position + 2] << 8 |
+      this.body[this.position + 3]
+    );
     this.position += 4;
 
     return value;
@@ -264,37 +279,40 @@ Object.assign(ServerPacket.prototype, {
 
   readString8() {
     if (this.position + 1 > this.body.length) {
-      return "";
+      return '';
     }
 
-    var length = this.body[this.position]
-    var position = this.position + 1
+    let length = this.body[this.position];
+    let position = this.position + 1;
 
     if (position + length > this.body.length) {
-      return "";
+      return '';
     }
 
-    var buffer = this.body.slice(position, position + length);
+    let buffer = this.body.slice(position, position + length);
     this.position += length + 1;
 
-    return String.fromCharCode.apply(null, buffer)
+    return String.fromCharCode.apply(null, buffer);
   },
 
   readString16() {
     if (this.position + 2 > this.body.length) {
-      return "";
+      return '';
     }
 
-    var length = this.body[this.position] << 8 | this.body[this.position + 1];
-    var position = this.position + 2;
+    let length = this.body[this.position] << 8 | this.body[this.position + 1];
+    let position = this.position + 2;
 
     if (position + length > this.body.length) {
-      return "";
+      return '';
     }
 
-    var buffer = this.body.slice(position, position + length);
+    let buffer = this.body.slice(position, position + length);
     this.position += length + 2;
 
     return String.fromCharCode.apply(null, buffer);
   }
 });
+
+
+export {ClientPacket, ServerPacket};

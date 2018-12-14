@@ -1,17 +1,28 @@
-# da.js
-A Dark Ages client written in Javascript
+# darkages-client
+A Dark Ages client for Node.js applications.
 
-### Setup
-Clone this repository.
-```sh
-git clone https://github.com/ericvaladas/da.js.git
+## Installation
 ```
-Load this repository as an _unpacked extension_ in Google Chrome.
-Go to `chrome://extensions/` and enable Developer mode to load the extension.
+npm install darkages-client
+```
 
-### Usage
-Launch the da.js chrome app, open the inspector, and play around in the console
+## Usage
+
+### ES6
 ```js
-var client = new Client("username", "password")
-client.connect()
+import { Client } from 'darkages-client';
+
+const client = new Client('username', 'password');
+client.connect();
 ```
+
+
+### CommonJS
+```js
+const Darkages = require('darkages-client');
+
+const client = new Darkages.Client('username', 'password');
+client.connect();
+```
+
+

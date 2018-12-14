@@ -210,5 +210,5 @@ export default class {
     this.body = this.body.concat(buffer);
     this.position += buffer.length + 2;
   }
-}
+};
 

@@ -46,7 +46,8 @@ export default {
       case 3: // Invalid name or password
       case 14: // Name does not exist
       case 15: // Incorrect password
-        console.log(message);
+        console.log(`${message}.`);
+        client.disconnect();
         break;
       default:
         console.log(message, `(code ${code})`);

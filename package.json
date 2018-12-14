@@ -21,7 +21,7 @@
     "type": "git",
     "url": "git+https://github.com/ericvaladas/da.js.git"
   },
-  "author": "",
+  "author": "Eric Valadas <ericvaladas@me.com>",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/ericvaladas/da.js/issues"

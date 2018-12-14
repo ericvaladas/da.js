@@ -1,11 +1,12 @@
 {
+  "extends": "eslint:recommended",
   "parserOptions": {
     "ecmaVersion": 6,
-    "sourceType": "module",
+    "sourceType": "module"
   },
-  "extends": [
-    "./node_modules/pleaserc/.eslintrc"
-  ],
+  "rules": {
+    "no-console": "off",
+  },
   "env": {
     "node": true,
     "es6": true

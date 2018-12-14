@@ -1,6 +1,6 @@
 import md5 from 'md5';
-import {uint8, uint16, int32} from './datatypes';
-import {random} from './util';
+import { uint8, uint16, int32 } from './datatypes';
+import { random } from './util';
 
 
 function isSpecialEncryptOpcode(opcode) {
@@ -83,68 +83,52 @@ Object.assign(Crypto.prototype, {
       return;
     }
 
-    let specialKeySeed = random(0xFFFF);
-    let specialEncrypt = isSpecialEncryptOpcode(packet.opcode);
+    const specialKeySeed = random(0xFFFF);
+    const specialEncrypt = isSpecialEncryptOpcode(packet.opcode);
     let a = uint16(uint16(specialKeySeed) % 65277 + 256);
     let b = uint8(((specialKeySeed & 0xFF0000) >> 16) % 155 + 100);
+    const key = specialEncrypt ? this.generateSpecialKey(a, b) : Buffer.from(this.key);
 
     packet.body.push(0);
 
     if (specialEncrypt) {
-      let specialKey = this.generateSpecialKey(a, b);
       packet.body.push(packet.opcode);
-      packet.body = this.transform(packet.body, specialKey, packet.sequence);
     }
-    else {
-      let basicKey = new Buffer(this.key);
-      packet.body = this.transform(packet.body, basicKey, packet.sequence);
-    }
+
+    packet.body = this.transform(packet.body, key, packet.sequence);
 
     let hash = md5([packet.opcode, packet.sequence].concat(packet.body));
-    hash = new Buffer(hash, 'hex');
+    hash = Buffer.from(hash, 'hex');
 
-    packet.body.push(hash[13]);
-    packet.body.push(hash[3]);
-    packet.body.push(hash[11]);
-    packet.body.push(hash[7]);
+    packet.body.push(hash[13], hash[3], hash[11], hash[7]);
 
     a ^= 0x7470;
     b ^= 0x23;
 
-    packet.body.push(uint8(a));
-    packet.body.push(b);
-    packet.body.push(uint8(a >> 8));
-
+    packet.body.push(uint8(a), b, uint8(a >> 8));
     packet.body.unshift(packet.sequence);
   },
 
   decrypt(packet) {
     if (!isDecryptOpcode(packet.opcode)) {
-      packet.body.shift();
       return;
     }
 
-    packet.body.shift();
     packet.sequence = packet.body.shift();
-    packet.body = packet.body.slice(0, packet.body.length - 3);
 
-    if (isSpecialDecryptOpcode(packet.opcode)) {
-      let a = uint16(packet.body[packet.body.length - 1] << 8 | packet.body[packet.body.length - 3]) ^ 0x6474;
-      let b = packet.body[packet.body.length - 2] ^ 0x24;
-      let specialKey = this.generateSpecialKey(a, b);
-      packet.body = this.transform(packet.body, specialKey, packet.sequence);
-    }
-    else {
-      let basicKey = new Buffer(this.key);
-      packet.body = this.transform(packet.body, basicKey, packet.sequence);
-    }
+    const specialEncrypt = isSpecialDecryptOpcode(packet.opcode);
+    const a = uint16(packet.body[packet.body.length - 1] << 8 | packet.body[packet.body.length - 3]) ^ 0x6474;
+    const b = packet.body[packet.body.length - 2] ^ 0x24;
+    const key = specialEncrypt ? this.generateSpecialKey(a, b) : Buffer.from(this.key);
+
+    packet.body = packet.body.slice(0, packet.body.length - 3);
+    packet.body = this.transform(packet.body, key, packet.sequence);
   },
 
   transform(buffer, key, sequence) {
     return buffer.map((byte, i) => {
-      byte ^= this.salt[sequence];
-      byte ^= key[i % 9];
-      let saltIndex = int32((i / 9) % 256);
+      byte ^= this.salt[sequence] ^ key[i % key.length];
+      const saltIndex = int32(i / key.length) % this.salt.length;
       if (saltIndex !== sequence) {
         byte ^= this.salt[saltIndex];
       }
@@ -153,9 +137,8 @@ Object.assign(Crypto.prototype, {
   },
 
   generateSalt() {
-    let salt = [];
-    let saltByte = 0;
-    for (let i = 0; i < 256; ++i) {
+    this.salt = new Array(256).fill().map((v, i) => {
+      let saltByte;
       switch (this.seed) {
         case 0:
           saltByte = i;
@@ -170,7 +153,7 @@ Object.assign(Crypto.prototype, {
           saltByte = (i % 2 !== 0 ? -1 : 1) * ((255 - i) / 2) + 128;
           break;
         case 4:
-          saltByte = i / 16 * (i / 16);
+          saltByte = uint8(i / 16) * uint8(i / 16);
           break;
         case 5:
           saltByte = 2 * i % 256;
@@ -185,21 +168,18 @@ Object.assign(Crypto.prototype, {
           saltByte = i > 127 ? 511 - 2 * i : 2 * i;
           break;
         case 9:
-          saltByte = 255 - (i - 128) / 8 * ((i - 128) / 8) % 256;
+          saltByte = uint8(255 - uint8((i - 128) / 8) * uint8((i - 128) / 8) % 256);
           break;
       }
-      saltByte |= (saltByte << 8) | ((saltByte | (saltByte << 8)) << 16);
-      salt[i] = uint8(saltByte);
-    }
-    this.salt = salt;
+      return uint8(saltByte | (saltByte << 8) | ((saltByte | (saltByte << 8)) << 16));
+    });
   },
 
   generateSpecialKey(a, b) {
-    let specialKey = [];
-    for (let i = 0; i < 9; ++i) {
-      specialKey[i] = this.specialKeyTable[(i * (9 * i + b * b) + a) % 1024];
-    }
-    return specialKey;
+    return new Array(this.key.length).fill().map((v, i) => {
+      const index = (i * (this.key.length * i + b * b) + a) % this.specialKeyTable.length;
+      return this.specialKeyTable[index];
+    });
   },
 
   generateSpecialKeyTable() {
@@ -208,12 +188,12 @@ Object.assign(Crypto.prototype, {
       for (let i = 0; i < 31; ++i) {
         keyTable += md5(keyTable);
       }
-      this.specialKeyTable = new Buffer(keyTable);
+      this.specialKeyTable = Buffer.from(keyTable);
     }
   }
 });
 
 
-export {Crypto};
-export {isSpecialEncryptOpcode, isSpecialDecryptOpcode};
-export {isEncryptOpcode, isDecryptOpcode};
+export { Crypto};
+export { isSpecialEncryptOpcode, isSpecialDecryptOpcode };
+export { isEncryptOpcode, isDecryptOpcode };

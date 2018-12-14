@@ -4,17 +4,16 @@
   "description": "A Dark Ages client written in Javascript",
   "main": "client.js",
   "dependencies": {
-    "babel-core": "^6.18.2",
-    "babel-loader": "^6.2.8",
-    "babel-preset-latest": "^6.16.0",
-    "eslint": "^3.11.1",
-    "md5": "^2.2.1",
-    "pleaserc": "^2.3.0",
-    "webpack": "^1.13.3"
+    "md5": "^2.2.1"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.3",
+    "babel-preset-env": "^1.7.0",
+    "eslint": "^5.10.0"
+  },
   "scripts": {
-    "build": "webpack",
+    "build": "babel src -d lib",
     "lint": "eslint src"
   },
   "repository": {

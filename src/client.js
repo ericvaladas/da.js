@@ -51,8 +51,10 @@ export default class {
     socket.on('close', () => this.disconnect(socket));
 
     return new Promise(resolve => {
-      socket.connect(port, address, resolve);
-      this.socket = socket;
+      socket.connect(port, address, () => {
+        this.socket = socket;
+        resolve();
+      });
     });
   }
 

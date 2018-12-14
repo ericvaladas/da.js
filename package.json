@@ -26,5 +26,8 @@
   "bugs": {
     "url": "https://github.com/ericvaladas/da.js/issues"
   },
-  "homepage": "https://github.com/ericvaladas/da.js#readme"
+  "homepage": "https://github.com/ericvaladas/da.js#readme",
+  "files": [
+    "lib"
+  ]
 }

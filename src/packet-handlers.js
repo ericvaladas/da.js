@@ -67,7 +67,6 @@ export default {
     address.reverse();
     address = address.join('.');
 
-    console.log(address, port);
     client.reconnect(address, port)
       .then(() => {
         client.confirmIdentity(id)

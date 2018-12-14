@@ -30,7 +30,6 @@ export default class {
     this.events.on(0x4C, packetHandlers.endingSignal)
     this.events.on(0x68, packetHandlers.pingB)
     this.events.on(0x7E, packetHandlers.welcome)
-    this.reconnect = this.reconnect.bind(this);
   }
 
   tickCount() {
@@ -48,7 +47,7 @@ export default class {
 
     const socket = new net.Socket();
     socket.on('data', this.receive.bind(this));
-    socket.on('end', () => setTimeout(this.reconnect, 1000));
+    socket.on('end', () => setTimeout(this.reconnect.bind(this), 1000));
     socket.on('close', () => this.disconnect(socket));
 
     return new Promise(resolve => {

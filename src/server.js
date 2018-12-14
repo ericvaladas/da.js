@@ -20,8 +20,8 @@ function getServerFromAddress(address, port) {
 }
 
 const address = '52.88.55.94';
-const LoginServer = new Server(address, 2610, 'Login Server');
-const TemuairServer = new Server(address, 2611, 'Temuair Server');
-const MedeniaServer = new Server(address, 2612, 'Medenia Server');
+const LoginServer = new Server(address, 2610, 'Login');
+const TemuairServer = new Server(address, 2611, 'Temuair');
+const MedeniaServer = new Server(address, 2612, 'Medenia');
 
 export {getServerFromAddress, LoginServer, TemuairServer, MedeniaServer};

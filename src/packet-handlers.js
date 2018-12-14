@@ -40,14 +40,16 @@ export default {
     const code = packet.readByte();
     const message = packet.readString8();
 
-    console.log(message);
     switch (code) {
       case 0: // Success
+        break;
       case 3: // Invalid name or password
       case 14: // Name does not exist
       case 15: // Incorrect password
+        console.log(message);
         break;
       default:
+        console.log(message, `(code ${code})`);
         console.log('Log in failed. Retrying...');
         setTimeout(() => client.reconnect(), 1000)
     }

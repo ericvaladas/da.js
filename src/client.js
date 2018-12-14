@@ -57,12 +57,11 @@ export default class {
   }
 
   disconnect(socket=this.socket) {
-    console.log(`Disconnected from ${this.server.name}.`);
     socket.destroy();
   }
 
   reconnect(address, port) {
-    this.disconnect()
+    this.disconnect();
     this.encryptSequence = 0;
     this.didSendVersion = false;
     return this.connect(address, port);

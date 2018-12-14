@@ -75,7 +75,7 @@ export default class {
     return value;
   }
 
-  readUint16() {
+  readUInt16() {
     if (this.position + 2 > this.body.length) {
       return 0;
     }
@@ -102,7 +102,7 @@ export default class {
     return int32(value);
   }
 
-  readUint32() {
+  readUInt32() {
     if (this.position + 4 > this.body.length) {
       return 0;
     }
@@ -168,7 +168,7 @@ export default class {
     this.body.push(value & 0xFF);
   }
 
-  writeUint16(value) {
+  writeUInt16(value) {
     value = uint16(value);
     this.body.push((value >> 8) & 0xFF);
     this.body.push(value & 0xFF);
@@ -182,7 +182,7 @@ export default class {
     this.body.push(value & 0xFF);
   }
 
-  writeUint32(value) {
+  writeUInt32(value) {
     value = uint32(value);
     this.body.push((value >> 24) & 0xFF);
     this.body.push((value >> 16) & 0xFF);

@@ -74,7 +74,7 @@ export default class {
     x10.writeByte(this.crypto.seed);
     x10.writeString8(this.crypto.key);
     x10.writeString8(this.crypto.name);
-    x10.writeUint32(id);
+    x10.writeUInt32(id);
     x10.writeByte(0x00);
     this.send(x10);
   }
@@ -120,16 +120,16 @@ export default class {
     x03.writeString8(this.password);
     x03.writeByte(key1);
     x03.writeByte(uint8(key2 ^ (key1 + 59)));
-    x03.writeUint32(clientId);
-    x03.writeUint16(clientIdChecksum);
-    x03.writeUint32(randomValue);
+    x03.writeUInt32(clientId);
+    x03.writeUInt16(clientIdChecksum);
+    x03.writeUInt32(randomValue);
 
     let crc = calculateCRC16(x03.body, this.username.length + this.password.length + 2, 12);
     const crcKey = uint8(key2 + 165);
     crc ^= uint16(crcKey | (crcKey + 1) << 8);
 
-    x03.writeUint16(crc);
-    x03.writeUint16(0x0100);
+    x03.writeUInt16(crc);
+    x03.writeUInt16(0x0100);
     this.send(x03);
   }
 

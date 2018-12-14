@@ -24,7 +24,7 @@ export default {
       return;
     }
 
-    packet.readUint32();  // server table crc
+    packet.readUInt32();  // server table crc
     const seed = packet.readByte();
     const key = packet.readString8();
     client.crypto = new Crypto(seed, key);
@@ -58,12 +58,12 @@ export default {
 
   redirect(packet, client) {
     let address = packet.read(4);
-    const port = packet.readUint16();
+    const port = packet.readUInt16();
     packet.readByte();  // remaining
     const seed = packet.readByte();
     const key = packet.readString8();
     const name = packet.readString8();
-    const id = packet.readUint32();
+    const id = packet.readUInt32();
 
     client.crypto = new Crypto(seed, key, name);
 
@@ -132,3 +132,4 @@ export default {
     client.didSendVersion = true;
   }
 };
+

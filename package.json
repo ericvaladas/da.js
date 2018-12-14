@@ -1,6 +1,6 @@
 {
   "name": "darkages-client",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A Dark Ages client for Node.js applications.",
   "main": "index.js",
   "dependencies": {

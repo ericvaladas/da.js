@@ -49,7 +49,7 @@ export default {
         break;
       default:
         console.log('Log in failed. Retrying...');
-        setTimeout(client.reconnect, 1000)
+        setTimeout(() => client.reconnect(), 1000)
     }
   },
 

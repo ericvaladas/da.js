@@ -2,7 +2,7 @@ import { uint8, uint16, int16, uint32, int32 } from './datatypes';
 import { toHex } from './util';
 
 
-class Packet {
+export default class {
   constructor(arg) {
     if (arg.constructor === Number) {
       this.opcode = arg;
@@ -211,6 +211,4 @@ class Packet {
     this.position += buffer.length + 2;
   }
 }
-
-export { Packet };
 

@@ -5,7 +5,7 @@ import { Crypto, isEncryptOpcode } from './crypto';
 import { uint8, uint16, uint32 } from './datatypes';
 import { calculateCRC16 } from './crc';
 import { random } from './util';
-import { Packet } from './packet';
+import Packet from './packet';
 import packetHandlers from './packet-handlers';
 
 

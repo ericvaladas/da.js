@@ -1,7 +1,7 @@
 const net = require('net');
 const EventEmitter = require('events');
 import { getServerFromAddress, LoginServer } from './server';
-import { Crypto, isEncryptOpcode } from './crypto';
+import Crypto, { isEncryptOpcode } from './crypto';
 import { uint8, uint16, uint32 } from './datatypes';
 import { calculateCRC16 } from './crc';
 import { random } from './util';

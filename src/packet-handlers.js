@@ -1,6 +1,6 @@
-import { Crypto } from './crypto';
 import { int32 } from './datatypes';
 import { LoginServer } from './server';
+import Crypto from './crypto';
 import Packet from './packet';
 
 

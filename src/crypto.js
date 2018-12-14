@@ -69,15 +69,15 @@ function isDecryptOpcode(opcode) {
   return true;
 }
 
-function Crypto(seed, key, name) {
-  this.seed = seed || 0;
-  this.key = key || 'UrkcnItnI';
-  this.name = name;
-  this.generateSalt();
-  this.generateSpecialKeyTable();
-}
+class Crypto {
+  constructor(seed, key, name) {
+    this.seed = seed || 0;
+    this.key = key || 'UrkcnItnI';
+    this.name = name;
+    this.generateSalt();
+    this.generateSpecialKeyTable();
+  }
 
-Object.assign(Crypto.prototype, {
   encrypt(packet) {
     if (!isEncryptOpcode(packet.opcode)) {
       return;
@@ -107,7 +107,7 @@ Object.assign(Crypto.prototype, {
 
     packet.body.push(uint8(a), b, uint8(a >> 8));
     packet.body.unshift(packet.sequence);
-  },
+  }
 
   decrypt(packet) {
     if (!isDecryptOpcode(packet.opcode)) {
@@ -123,7 +123,7 @@ Object.assign(Crypto.prototype, {
 
     packet.body = packet.body.slice(0, packet.body.length - 3);
     packet.body = this.transform(packet.body, key, packet.sequence);
-  },
+  }
 
   transform(buffer, key, sequence) {
     return buffer.map((byte, i) => {
@@ -134,7 +134,7 @@ Object.assign(Crypto.prototype, {
       }
       return byte;
     });
-  },
+  }
 
   generateSalt() {
     this.salt = new Array(256).fill().map((v, i) => {
@@ -173,27 +173,26 @@ Object.assign(Crypto.prototype, {
       }
       return uint8(saltByte | (saltByte << 8) | ((saltByte | (saltByte << 8)) << 16));
     });
-  },
+  }
 
   generateSpecialKey(a, b) {
     return new Array(this.key.length).fill().map((v, i) => {
       const index = (i * (this.key.length * i + b * b) + a) % this.specialKeyTable.length;
       return this.specialKeyTable[index];
     });
-  },
+  }
 
   generateSpecialKeyTable() {
     if (this.name) {
       let keyTable = md5(md5(this.name));
-      for (let i = 0; i < 31; ++i) {
+      for (let i = 0; i < 31; i++) {
         keyTable += md5(keyTable);
       }
       this.specialKeyTable = Buffer.from(keyTable);
     }
   }
-});
+}
 
-
-export { Crypto};
+export default Crypto;
 export { isSpecialEncryptOpcode, isSpecialDecryptOpcode };
 export { isEncryptOpcode, isDecryptOpcode };

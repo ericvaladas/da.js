@@ -47,7 +47,7 @@ export default class {
       return 0;
     }
 
-    const buffer = this.body.slice(this.position, length);
+    const buffer = this.body.slice(this.position, this.position + length);
     this.position += length;
 
     return buffer;

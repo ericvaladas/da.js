@@ -25,4 +25,24 @@ const client = new Darkages.Client('username', 'password');
 client.connect();
 ```
 
+### Example
+```js
+const client = new Client('username', 'password');
+
+client.events.on(0x0A, packet => {
+  const channel = packet.readByte();
+  const message = packet.readString16();
+  const [ name, whisper ] = message.split('" ');
+
+  if (whisper === 'ping') {
+    const response = new Packet(0x19);
+    response.writeString8(name);
+    response.writeString8('pong');
+    client.send(response);
+  }
+});
+
+client.connect();
+```
+
 

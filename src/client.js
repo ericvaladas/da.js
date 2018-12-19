@@ -47,8 +47,9 @@ export default class {
 
     const socket = new net.Socket();
     socket.on('data', this.receive.bind(this));
-    socket.on('end', () => setTimeout(this.reconnect.bind(this), 1000));
     socket.on('close', () => this.disconnect(socket));
+    socket.on('end', () => setTimeout(this.reconnect.bind(this), 1000));
+    socket.on('error', () => setTimeout(this.reconnect.bind(this), 5000));
 
     return new Promise(resolve => {
       socket.connect(port, address, () => {

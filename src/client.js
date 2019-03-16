@@ -1,5 +1,5 @@
-const net = require('net');
-const EventEmitter = require('events');
+import net from 'net';
+import EventEmitter from 'events';
 import { getServerFromAddress, LoginServer } from './server';
 import Crypto, { isEncryptOpcode } from './crypto';
 import { uint8, uint16, uint32 } from './datatypes';
